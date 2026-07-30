@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "koyomi",
+    "slug": "koyomi-app",
+    "version": "0.1.0",
+    "scheme": "koyomi",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0F1319"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.yourname.koyomi",
+      "infoPlist": {
+        "NSPhotoLibraryAddUsageDescription": "koyomiが生成した壁紙を専用アルバムに保存するために使用します。"
+      }
+    },
+    "android": {
+      "package": "com.yourname.koyomi",
+      "permissions": [
+        "SET_WALLPAPER"
+      ]
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "koyomiが生成した壁紙を確認・保存するために使用します。",
+          "savePhotosPermission": "koyomiが生成した壁紙を専用アルバムに保存するために使用します。",
+          "isAccessMediaLocationEnabled": false
+        }
+      ]
+    ]
+  }
+}
