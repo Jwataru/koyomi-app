@@ -17,6 +17,8 @@ import {
   PhotoMeta,
   loadWallpaperAssetIds,
   saveWallpaperAssetIds,
+  loadWallpaperLastApplied,
+  saveWallpaperLastApplied,
 } from '../data/storage';
 import { calcLevel, toDate } from '../logic/cycle';
 
@@ -101,6 +103,22 @@ export default function WallpaperEngine() {
           setTimeout(resolve, 120);
         });
 
+        // 「今アルバムに入っている一番新しい写真」がすでに今回適用したい
+        // レベル・写真と同じなら、実質何も変わっていない。
+        // Photosへの書き込み（＝新規作成→古い方の削除確認ダイアログ）は行わず、
+        // ショートカットの再実行だけで済ませる（＝「上書きが発生する時だけ確認が出る」を実現する）。
+        const lastApplied = await loadWallpaperLastApplied();
+        const nothingChanged =
+          !!lastApplied && lastApplied.level === lv && lastApplied.uri === (nextPhoto?.uri ?? null);
+
+        if (nothingChanged) {
+          return {
+            success: true,
+            message: `すでに最新の状態です（レベル${lv}・${LEVELS[lv].name}）`,
+            level: lv,
+          };
+        }
+
         const perm = await MediaLibrary.requestPermissionsAsync();
         if (perm.status !== 'granted') {
           return {
@@ -158,6 +176,8 @@ export default function WallpaperEngine() {
         // アルバムを「その時点の4枚（レベル1〜4）」だけに保つ。
         // ※ iOSの仕様上、アプリが写真を削除する際は必ずユーザー確認のダイアログが出る
         //   （無許可で削除はできない）。ここで失敗しても致命的ではないので握りつぶす。
+        //   このダイアログは「実際に写真が変わって、古い方を消す必要があるとき」だけ
+        //   出るようになっている（上の nothingChanged チェックのおかげ）。
         try {
           const assetIds = await loadWallpaperAssetIds();
           const prevId = assetIds[lv];
@@ -168,6 +188,8 @@ export default function WallpaperEngine() {
         } catch (e) {
           console.warn('[wallpaperEngine] failed to remove previous asset for level', lv, e);
         }
+
+        await saveWallpaperLastApplied({ level: lv, uri: nextPhoto?.uri ?? null });
 
         return {
           success: true,

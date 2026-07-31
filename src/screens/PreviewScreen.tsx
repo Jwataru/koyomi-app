@@ -52,8 +52,8 @@ export default function PreviewScreen() {
 
   const content = (
     <View style={styles.lockContent}>
-      <Text style={styles.lockTime}>{formatTime(now)}</Text>
       <Text style={styles.lockDate}>{formatDate(now)}</Text>
+      <Text style={styles.lockTime}>{formatTime(now)}</Text>
       {!photo?.uri && (
         <View style={styles.fallbackIcon}>
           <LevelIcon level={level} color="#fff" size={64} />
@@ -141,9 +141,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#0c0f14',
     borderRadius: 12,
   },
-  lockContent: { flex: 1, alignItems: 'center', paddingTop: 48, paddingBottom: 20, paddingHorizontal: 16 },
-  lockTime: { color: '#fff', fontSize: 42, fontWeight: '600' },
-  lockDate: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 2 },
+  lockContent: { flex: 1, alignItems: 'center', paddingTop: 30, paddingBottom: 20, paddingHorizontal: 16 },
+  lockTime: { color: '#fff', fontSize: 46, fontWeight: '600', letterSpacing: -1, marginTop: 2 },
+  lockDate: { color: 'rgba(255,255,255,0.92)', fontSize: 12, fontWeight: '500' },
   fallbackIcon: {
     marginTop: 20,
     width: 100,

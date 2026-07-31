@@ -211,7 +211,7 @@ export default function SettingsScreen() {
   // 指定したレベルの現在の写真設定（uri/x/y）が、最後にアルバムへ保存した内容と
   // 同じかどうか。同じであれば「保存済み」としてボタンをグレーアウトする。
   function isLevelSaved(level: LevelKey): boolean {
-    const current = photoMetaRef.current?.[level];
+    const current = photoMeta?.[level];
     const saved = savedMap[level];
     if (!current?.uri || !saved) return false;
     return saved.uri === current.uri;

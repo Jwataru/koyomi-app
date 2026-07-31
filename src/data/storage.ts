@@ -17,6 +17,7 @@ const KEYS = {
   wallpaperSaved: 'koyomi:wallpaperSaved',
   autoApplyOnChange: 'koyomi:autoApplyOnChange',
   wallpaperAssetIds: 'koyomi:wallpaperAssetIds',
+  wallpaperLastApplied: 'koyomi:wallpaperLastApplied',
 } as const;
 
 export type CycleSettings = {
@@ -87,6 +88,13 @@ export const saveWallpaperSaved = (v: WallpaperSavedMap) => setJSON(KEYS.wallpap
 export type WallpaperAssetIdMap = Partial<Record<LevelKey, string>>;
 export const loadWallpaperAssetIds = () => getJSON(KEYS.wallpaperAssetIds, {} as WallpaperAssetIdMap);
 export const saveWallpaperAssetIds = (v: WallpaperAssetIdMap) => setJSON(KEYS.wallpaperAssetIds, v);
+
+// 「今、アルバムの中で一番新しい（＝ショートカットの『最新の写真』が拾う）のはどのレベルの
+// どの写真か」を覚えておくためのもの。ここが今回のリクエストと一致していれば、
+// 実質的に何も変わっていないので Photos への書き込み（＝削除確認ダイアログ）自体をスキップする。
+export type WallpaperLastApplied = { level: LevelKey; uri: string | null } | null;
+export const loadWallpaperLastApplied = () => getJSON<WallpaperLastApplied>(KEYS.wallpaperLastApplied, null);
+export const saveWallpaperLastApplied = (v: WallpaperLastApplied) => setJSON(KEYS.wallpaperLastApplied, v);
 
 // 「設定」画面で写真や生理予定日を変更したときに、時刻を待たずその場でロック画面へも
 // 反映しにいくかどうか。true の場合、変更のたびにショートカット（壁紙を設定）まで自動実行する。
