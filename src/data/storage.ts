@@ -15,6 +15,7 @@ const KEYS = {
   photoMeta: 'koyomi:photoMeta',
   onboarding: 'koyomi:onboarding',
   wallpaperSaved: 'koyomi:wallpaperSaved',
+  autoApplyOnChange: 'koyomi:autoApplyOnChange',
 } as const;
 
 export type CycleSettings = {
@@ -79,6 +80,11 @@ export const saveOnboarding = (v: OnboardingState) => setJSON(KEYS.onboarding, v
 
 export const loadWallpaperSaved = () => getJSON(KEYS.wallpaperSaved, {} as WallpaperSavedMap);
 export const saveWallpaperSaved = (v: WallpaperSavedMap) => setJSON(KEYS.wallpaperSaved, v);
+
+// 「設定」画面で写真や生理予定日を変更したときに、時刻を待たずその場でロック画面へも
+// 反映しにいくかどうか。true の場合、変更のたびにショートカット（壁紙を設定）まで自動実行する。
+export const loadAutoApplyOnChange = () => getJSON(KEYS.autoApplyOnChange, true);
+export const saveAutoApplyOnChange = (v: boolean) => setJSON(KEYS.autoApplyOnChange, v);
 
 /**
  * ユーザーが選んだ画像（file://... の一時URI）を、アプリ専用の永続ディレクトリに

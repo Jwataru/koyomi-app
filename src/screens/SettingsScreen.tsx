@@ -19,7 +19,12 @@ import {
   Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { requestWallpaperSave } from '../services/wallpaperEngine';
+import {
+  requestWallpaperSave,
+  regenerateAndApplyWallpaper,
+  runWallpaperShortcut,
+  WALLPAPER_SHORTCUT_NAME,
+} from '../services/wallpaperEngine';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { colors, LEVELS, LevelKey } from '../theme/theme';
@@ -34,6 +39,8 @@ import {
   loadOnboarding,
   loadWallpaperSaved,
   saveWallpaperSaved,
+  loadAutoApplyOnChange,
+  saveAutoApplyOnChange,
   CycleSettings,
   PhotoMetaMap,
   OnboardingState,
@@ -98,6 +105,14 @@ export default function SettingsScreen() {
   const [savedMap, setSavedMap] = useState<WallpaperSavedMap>({});
   // 切り抜きモーダルに渡す「どのレベルの、どの画像を切り抜いているか」
   const [cropTarget, setCropTarget] = useState<{ level: LevelKey; uri: string } | null>(null);
+  // 「設定」変更時にロック画面まで即座に反映するかどうか
+  const [autoApplyOnChange, setAutoApplyOnChange] = useState(true);
+  const autoApplyOnChangeRef = useRef(true);
+  const [applyingNow, setApplyingNow] = useState(false);
+  // 初回マウント直後の commitCycle 発火（周期設定を読み込んだ直後）で
+  // ショートカットが誤って走らないようにするためのガード。
+  // 直近に保存した内容を控えておき、実際に値が変わったときだけ反映処理を行う。
+  const lastCommittedRef = useRef<CycleSettings | null>(null);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -110,10 +125,38 @@ export default function SettingsScreen() {
       const c = await loadCycleSettings();
       setNextPeriodDate(c.nextPeriodDate);
       setCycleLen(String(c.cycleLen));
+      lastCommittedRef.current = { nextPeriodDate: c.nextPeriodDate, cycleLen: c.cycleLen };
       setPhotoMeta(await loadPhotoMeta());
       setSavedMap(await loadWallpaperSaved());
+      const auto = await loadAutoApplyOnChange();
+      setAutoApplyOnChange(auto);
+      autoApplyOnChangeRef.current = auto;
     })();
   }, []);
+
+  function toggleAutoApplyOnChange() {
+    const next = !autoApplyOnChange;
+    setAutoApplyOnChange(next);
+    autoApplyOnChangeRef.current = next;
+    saveAutoApplyOnChange(next);
+  }
+
+  // 「今すぐ反映して確認」ボタン用。オートメーションが正しく設定できているかを
+  // 時刻を待たずにその場で確かめられるようにする。
+  async function applyNow() {
+    if (applyingNow) return;
+    setApplyingNow(true);
+    try {
+      const result = await regenerateAndApplyWallpaper();
+      if (!result.success) {
+        Alert.alert('反映できませんでした', result.message);
+      }
+      // 成功時はショートカットアプリに切り替わり「壁紙を設定」画面が開くので、
+      // アプリ側では特にメッセージを出さない（ショートカット側の完了操作に任せる）。
+    } finally {
+      setApplyingNow(false);
+    }
+  }
 
   async function commitCycle(next: Partial<CycleSettings>) {
     const merged: CycleSettings = {
@@ -121,6 +164,15 @@ export default function SettingsScreen() {
       cycleLen: next.cycleLen ?? Number(cycleLen),
     };
     await saveCycleSettings(merged);
+    const prev = lastCommittedRef.current;
+    const changed = !prev || prev.nextPeriodDate !== merged.nextPeriodDate || prev.cycleLen !== merged.cycleLen;
+    lastCommittedRef.current = merged;
+    // 生理予定日や周期の変更でレベル判定が変わりうるため、時刻を待たずに
+    // ロック画面まで反映しておく（実際に値が変わったとき、かつ
+    // 「設定変更時に壁紙へ自動反映」がオンのときのみ）。
+    if (changed && autoApplyOnChangeRef.current) {
+      regenerateAndApplyWallpaper();
+    }
   }
 
   // number-pad キーボードには「完了」ボタンが無く、onEndEditingが発火しないことがあるため
@@ -245,6 +297,11 @@ export default function SettingsScreen() {
         };
         setSavedMap(updated);
         await saveWallpaperSaved(updated);
+        // 今表示すべきレベルの写真が変わった可能性があるため、
+        // 「設定変更時に壁紙へ自動反映」がオンならロック画面まで即座に反映する。
+        if (autoApplyOnChangeRef.current) {
+          runWallpaperShortcut();
+        }
       }
     } finally {
       setSavingLevel(null);
@@ -389,6 +446,40 @@ export default function SettingsScreen() {
               <Text style={styles.launchBtnText}>{onboarding?.done ? '設定を変更' : '連携する'}</Text>
             </Pressable>
           </View>
+
+          {Platform.OS === 'ios' && (
+            <>
+              <View style={[styles.launchRow, { marginTop: 14 }]}>
+                <Text style={styles.launchText}>
+                  写真や生理予定日を変更したとき、時刻を待たず即ロック画面へ反映する
+                </Text>
+                <Pressable
+                  style={[styles.toggle, autoApplyOnChange && styles.toggleOn]}
+                  onPress={toggleAutoApplyOnChange}
+                >
+                  <View style={[styles.toggleDot, autoApplyOnChange && styles.toggleDotOn]} />
+                </Pressable>
+              </View>
+
+              <View style={[styles.launchRow, { marginTop: 14 }]}>
+                <Text style={styles.launchText}>
+                  オートメーションが正しく動くか、時刻を待たずその場で確認できます。
+                  {'\n'}（ショートカット「{WALLPAPER_SHORTCUT_NAME}」を今すぐ実行します）
+                </Text>
+                <Pressable
+                  style={[styles.launchBtn, applyingNow && styles.updateBtnDisabled]}
+                  onPress={applyNow}
+                  disabled={applyingNow}
+                >
+                  {applyingNow ? (
+                    <ActivityIndicator color={colors.l1} size="small" />
+                  ) : (
+                    <Text style={styles.launchBtnText}>今すぐ反映</Text>
+                  )}
+                </Pressable>
+              </View>
+            </>
+          )}
         </View>
 
         <View style={styles.panel}>
@@ -557,6 +648,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   launchBtnText: { color: colors.l1, fontSize: 12 },
+  toggle: { width: 34, height: 20, borderRadius: 10, backgroundColor: colors.hairline, padding: 2 },
+  toggleOn: { backgroundColor: colors.l1 },
+  toggleDot: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#12161C' },
+  toggleDotOn: { marginLeft: 14 },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   photoSlot: { width: '46%', gap: 6 },
   photoPreview: {

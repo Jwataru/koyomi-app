@@ -6,7 +6,7 @@
 // - プレビュー画面の「保存」ボタンからも、ショートカット経由のディープリンクからも、
 //   同じ requestWallpaperSave() を呼べば同じ結果になるようにしてある。
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Image, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, Image, StyleSheet, Dimensions, Linking, Platform } from 'react-native';
 import ViewShot from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
 import { colors, LEVELS, LevelKey } from '../theme/theme';
@@ -15,6 +15,24 @@ import { loadCycleSettings, loadPhotoMeta, PhotoMeta } from '../data/storage';
 import { calcLevel, toDate } from '../logic/cycle';
 
 export const WALLPAPER_ALBUM_NAME = 'koyomi壁紙';
+
+// オンボーディングの案内文どおりにユーザーがショートカットアプリに作成する想定の名前。
+// ユーザー側で別名にした場合は連携できなくなるため、設定画面でも同じ名前を案内する。
+export const WALLPAPER_SHORTCUT_NAME = 'koyomi壁紙を更新';
+
+/**
+ * 「koyomi壁紙を更新」ショートカットをその場で実行する（iOSのみ）。
+ * ショートカットの中の「壁紙を設定」アクションまで通しで動かすことで、
+ * アプリ内の保存だけでなく、実際のロック画面の見た目までその場で切り替える。
+ * アプリ自身はOS標準の壁紙設定APIを直接呼べないため、この一手間が必要になる。
+ */
+export function runWallpaperShortcut(): void {
+  if (Platform.OS !== 'ios') return;
+  const url = `shortcuts://run-shortcut?name=${encodeURIComponent(WALLPAPER_SHORTCUT_NAME)}`;
+  Linking.openURL(url).catch((e) => {
+    console.error('[wallpaperEngine] runWallpaperShortcut failed', e);
+  });
+}
 
 const { width, height } = Dimensions.get('window');
 
@@ -43,6 +61,20 @@ export function requestWallpaperSave(forcedLevel?: LevelKey): Promise<WallpaperS
     return Promise.resolve({ success: false, message: 'アプリの準備中です。少し待ってからもう一度お試しください。' });
   }
   return _requestSave(forcedLevel);
+}
+
+/**
+ * 「設定」画面での変更（写真の更新・生理予定日や周期の変更）をきっかけに、
+ * 時刻を待たずその場でロック画面まで反映したいときに呼ぶ。
+ * 1. 現在の周期から自動判定したレベルで壁紙を生成し、専用アルバムへ保存
+ * 2. 保存に成功したら、ショートカットを実行して実際のロック画面まで切り替える
+ */
+export async function regenerateAndApplyWallpaper(forcedLevel?: LevelKey): Promise<WallpaperSaveResult> {
+  const result = await requestWallpaperSave(forcedLevel);
+  if (result.success) {
+    runWallpaperShortcut();
+  }
+  return result;
 }
 
 /**

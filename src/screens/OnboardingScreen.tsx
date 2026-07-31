@@ -1,8 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Pressable, Platform, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  Pressable,
+  Platform,
+  ScrollView,
+  Linking,
+  ActivityIndicator,
+} from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors } from '../theme/theme';
 import { loadOnboarding, saveOnboarding, OnboardingState } from '../data/storage';
+import { regenerateAndApplyWallpaper, WALLPAPER_SHORTCUT_NAME } from '../services/wallpaperEngine';
 
 type Platform_ = 'ios' | 'android';
 
@@ -29,7 +40,7 @@ const OB_STEPS: Record<Platform_, Step[]> = {
     {
       icon: '⇩',
       title: 'ショートカットを追加',
-      desc: 'koyomiが用意した「koyomi壁紙を反映」ショートカットを、標準のショートカットアプリに1タップで追加します。',
+      desc: `koyomiが用意した「${WALLPAPER_SHORTCUT_NAME}」ショートカットを、標準のショートカットアプリに1タップで追加します。`,
     },
     {
       icon: '⟳',
@@ -37,9 +48,15 @@ const OB_STEPS: Record<Platform_, Step[]> = {
       desc: '毎日この時刻に、ロック画面の壁紙を自動で更新します。あとから変更もできます。',
     },
     {
+      icon: '⚑',
+      title: 'オートメーションを作成',
+      desc:
+        'この時刻に自動で切り替わるようにするには、最後にショートカットアプリ側で1回だけ「オートメーション」を作成する必要があります。下の手順どおりに設定してください。',
+    },
+    {
       icon: '✓',
       title: '設定が完了しました',
-      desc: '設定した時刻に、koyomiの指標がロック画面へ自動で反映されます。',
+      desc: 'オートメーションが正しく作成できていれば、設定した時刻にkoyomiの指標がロック画面へ自動で反映されます。',
     },
   ],
   android: [
@@ -75,6 +92,7 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   const [step, setStep] = useState(0);
   const [time, setTime] = useState(new Date(2000, 0, 1, 7, 0));
   const [batteryExempt, setBatteryExempt] = useState(true);
+  const [applyingNow, setApplyingNow] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -105,6 +123,18 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
 
   const showTimePicker = (platform === 'ios' && step === 3) || (platform === 'android' && step === 1);
   const showBatteryToggle = platform === 'android' && step === 2;
+  const showAutomationGuide = platform === 'ios' && step === 4;
+  const showConfirmButton = platform === 'ios' && isLast;
+
+  async function handleApplyNow() {
+    if (applyingNow) return;
+    setApplyingNow(true);
+    try {
+      await regenerateAndApplyWallpaper();
+    } finally {
+      setApplyingNow(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -155,6 +185,45 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
               <View style={[styles.toggleDot, batteryExempt && styles.toggleDotOn]} />
             </Pressable>
           </View>
+        )}
+
+        {showAutomationGuide && (
+          <View style={styles.guideCard}>
+            {[
+              'ショートカットアプリを開き、「オートメーション」タブを選ぶ',
+              '右上の「＋」→「個人用オートメーションを作成」を選ぶ',
+              `「時刻」を選び、${String(time.getHours()).padStart(2, '0')}:${String(
+                time.getMinutes()
+              ).padStart(2, '0')}（毎日）に設定して「次へ」`,
+              `「アクションを追加」→「ショートカットを実行」→「${WALLPAPER_SHORTCUT_NAME}」を選ぶ`,
+              '「実行前に確認」をオフにして完了',
+            ].map((line, i) => (
+              <View key={i} style={styles.guideRow}>
+                <Text style={styles.guideIndex}>{i + 1}</Text>
+                <Text style={styles.guideText}>{line}</Text>
+              </View>
+            ))}
+            <Pressable
+              style={styles.ghostBtn}
+              onPress={() => Linking.openURL('shortcuts://').catch(() => {})}
+            >
+              <Text style={styles.ghostBtnText}>ショートカットアプリを開く</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {showConfirmButton && (
+          <Pressable
+            style={[styles.card, styles.confirmCard]}
+            onPress={handleApplyNow}
+            disabled={applyingNow}
+          >
+            {applyingNow ? (
+              <ActivityIndicator color={colors.l1} size="small" />
+            ) : (
+              <Text style={styles.cardLabel}>今すぐ反映して確認する</Text>
+            )}
+          </Pressable>
         )}
 
         <View style={styles.dots}>
@@ -219,6 +288,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardLabel: { color: colors.ink, fontSize: 12 },
+  confirmCard: { justifyContent: 'center', alignItems: 'center' },
+  guideCard: {
+    width: '100%',
+    backgroundColor: colors.bgPanel,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 12,
+    gap: 10,
+  },
+  guideRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  guideIndex: {
+    color: colors.l1,
+    fontSize: 11,
+    fontWeight: '700',
+    width: 16,
+  },
+  guideText: { color: colors.inkMuted, fontSize: 12, lineHeight: 18, flex: 1 },
   toggle: { width: 34, height: 20, borderRadius: 10, backgroundColor: colors.hairline, padding: 2 },
   toggleOn: { backgroundColor: colors.l1 },
   toggleDot: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#12161C' },
