@@ -6,7 +6,7 @@
 // - プレビュー画面の「保存」ボタンからも、ショートカット経由のディープリンクからも、
 //   同じ requestWallpaperSave() を呼べば同じ結果になるようにしてある。
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Image, StyleSheet, Dimensions, Linking, Platform } from 'react-native';
+import { View, Image, StyleSheet, Dimensions, Linking, Platform } from 'react-native';
 import ViewShot from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
 import { colors, LEVELS, LevelKey } from '../theme/theme';
@@ -35,15 +35,6 @@ export function runWallpaperShortcut(): void {
 }
 
 const { width, height } = Dimensions.get('window');
-
-function formatTime(d: Date) {
-  const h = String(d.getHours()).padStart(2, '0');
-  const m = String(d.getMinutes()).padStart(2, '0');
-  return `${h}:${m}`;
-}
-function formatDate(d: Date) {
-  return `${d.getMonth() + 1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
-}
 
 export type WallpaperSaveResult = { success: boolean; message: string; level?: LevelKey };
 
@@ -85,7 +76,6 @@ export default function WallpaperEngine() {
   const shotRef = useRef<ViewShot>(null);
   const [level, setLevel] = useState<LevelKey>(1);
   const [photo, setPhoto] = useState<PhotoMeta | null>(null);
-  const [now, setNow] = useState(new Date());
 
   useEffect(() => {
     _requestSave = async (forcedLevel?: LevelKey): Promise<WallpaperSaveResult> => {
@@ -100,7 +90,6 @@ export default function WallpaperEngine() {
         // state を更新してキャンバスを最新内容で再描画させ、
         // 描画が反映されるのを少し待ってからキャプチャする
         await new Promise<void>((resolve) => {
-          setNow(new Date());
           setLevel(lv);
           setPhoto(nextPhoto);
           setTimeout(resolve, 120);
@@ -193,8 +182,6 @@ export default function WallpaperEngine() {
             <View style={[StyleSheet.absoluteFill, { backgroundColor: info.soft }]} />
           )}
           <View style={styles.content}>
-            <Text style={styles.time}>{formatTime(now)}</Text>
-            <Text style={styles.date}>{formatDate(now)}</Text>
             {!photo?.uri && (
               <View style={styles.fallbackIcon}>
                 <LevelIcon level={level} color="#fff" size={96} />
@@ -225,8 +212,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: height * 0.16,
   },
-  time: { color: '#fff', fontSize: 96, fontWeight: '600' },
-  date: { color: 'rgba(255,255,255,0.85)', fontSize: 22, marginTop: 10 },
   fallbackIcon: {
     marginTop: 40,
     width: 220,
