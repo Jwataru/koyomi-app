@@ -16,6 +16,7 @@ const KEYS = {
   onboarding: 'koyomi:onboarding',
   wallpaperSaved: 'koyomi:wallpaperSaved',
   autoApplyOnChange: 'koyomi:autoApplyOnChange',
+  wallpaperAssetIds: 'koyomi:wallpaperAssetIds',
 } as const;
 
 export type CycleSettings = {
@@ -80,6 +81,12 @@ export const saveOnboarding = (v: OnboardingState) => setJSON(KEYS.onboarding, v
 
 export const loadWallpaperSaved = () => getJSON(KEYS.wallpaperSaved, {} as WallpaperSavedMap);
 export const saveWallpaperSaved = (v: WallpaperSavedMap) => setJSON(KEYS.wallpaperSaved, v);
+
+// 「koyomi壁紙」アルバムに最後に保存した Photos 側のアセットID（レベルごと）。
+// 次回同じレベルで保存するとき、これを手掛かりに古い方を削除して「上書き」を再現する。
+export type WallpaperAssetIdMap = Partial<Record<LevelKey, string>>;
+export const loadWallpaperAssetIds = () => getJSON(KEYS.wallpaperAssetIds, {} as WallpaperAssetIdMap);
+export const saveWallpaperAssetIds = (v: WallpaperAssetIdMap) => setJSON(KEYS.wallpaperAssetIds, v);
 
 // 「設定」画面で写真や生理予定日を変更したときに、時刻を待たずその場でロック画面へも
 // 反映しにいくかどうか。true の場合、変更のたびにショートカット（壁紙を設定）まで自動実行する。

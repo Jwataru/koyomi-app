@@ -11,7 +11,13 @@ import ViewShot from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
 import { colors, LEVELS, LevelKey } from '../theme/theme';
 import LevelIcon from '../components/LevelIcon';
-import { loadCycleSettings, loadPhotoMeta, PhotoMeta } from '../data/storage';
+import {
+  loadCycleSettings,
+  loadPhotoMeta,
+  PhotoMeta,
+  loadWallpaperAssetIds,
+  saveWallpaperAssetIds,
+} from '../data/storage';
 import { calcLevel, toDate } from '../logic/cycle';
 
 export const WALLPAPER_ALBUM_NAME = 'koyomi壁紙';
@@ -146,6 +152,21 @@ export default function WallpaperEngine() {
               e instanceof Error ? e.message : String(e)
             }）`,
           };
+        }
+
+        // 新しい画像の追加に成功したら、同じレベルで前回保存した古い画像を削除して
+        // アルバムを「その時点の4枚（レベル1〜4）」だけに保つ。
+        // ※ iOSの仕様上、アプリが写真を削除する際は必ずユーザー確認のダイアログが出る
+        //   （無許可で削除はできない）。ここで失敗しても致命的ではないので握りつぶす。
+        try {
+          const assetIds = await loadWallpaperAssetIds();
+          const prevId = assetIds[lv];
+          if (prevId && prevId !== asset.id) {
+            await MediaLibrary.deleteAssetsAsync([prevId]);
+          }
+          await saveWallpaperAssetIds({ ...assetIds, [lv]: asset.id });
+        } catch (e) {
+          console.warn('[wallpaperEngine] failed to remove previous asset for level', lv, e);
         }
 
         return {

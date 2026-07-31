@@ -28,10 +28,10 @@ export default function LockScreenPreview({
   const content = (
     <View style={styles.lockContent}>
       <View style={styles.notch} />
+      <Text style={styles.date}>{dateStr}</Text>
       <Text style={styles.time}>
         {hh}:{mm}
       </Text>
-      <Text style={styles.date}>{dateStr}</Text>
       {!photo?.uri && (
         <View style={[styles.fallbackIcon, { backgroundColor: 'rgba(0,0,0,0.22)' }]}>
           <LevelIcon level={level} color="#fff" size={64} />
@@ -90,12 +90,12 @@ const styles = StyleSheet.create({
   lockContent: {
     flex: 1,
     alignItems: 'center',
-    paddingTop: 40,
+    paddingTop: 26,
     paddingBottom: 18,
     paddingHorizontal: 14,
   },
-  time: { color: '#fff', fontSize: 38, fontWeight: '500' },
-  date: { color: 'rgba(255,255,255,0.85)', fontSize: 11, marginTop: 2 },
+  date: { color: 'rgba(255,255,255,0.92)', fontSize: 12, fontWeight: '500' },
+  time: { color: '#fff', fontSize: 52, fontWeight: '600', letterSpacing: -1, marginTop: 2 },
   fallbackIcon: {
     marginTop: 16,
     width: 90,
