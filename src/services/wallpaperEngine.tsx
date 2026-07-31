@@ -15,8 +15,6 @@ import {
   loadCycleSettings,
   loadPhotoMeta,
   PhotoMeta,
-  loadWallpaperAssetIds,
-  saveWallpaperAssetIds,
   loadWallpaperLastApplied,
   saveWallpaperLastApplied,
 } from '../data/storage';
@@ -105,8 +103,7 @@ export default function WallpaperEngine() {
 
         // 「今アルバムに入っている一番新しい写真」がすでに今回適用したい
         // レベル・写真と同じなら、実質何も変わっていない。
-        // Photosへの書き込み（＝新規作成→古い方の削除確認ダイアログ）は行わず、
-        // ショートカットの再実行だけで済ませる（＝「上書きが発生する時だけ確認が出る」を実現する）。
+        // その場合は無駄なPhotosへの書き込みは行わず、ショートカットの再実行だけで済ませる。
         const lastApplied = await loadWallpaperLastApplied();
         const nothingChanged =
           !!lastApplied && lastApplied.level === lv && lastApplied.uri === (nextPhoto?.uri ?? null);
@@ -172,23 +169,10 @@ export default function WallpaperEngine() {
           };
         }
 
-        // 新しい画像の追加に成功したら、同じレベルで前回保存した古い画像を削除して
-        // アルバムを「その時点の4枚（レベル1〜4）」だけに保つ。
-        // ※ iOSの仕様上、アプリが写真を削除する際は必ずユーザー確認のダイアログが出る
-        //   （無許可で削除はできない）。ここで失敗しても致命的ではないので握りつぶす。
-        //   このダイアログは「実際に写真が変わって、古い方を消す必要があるとき」だけ
-        //   出るようになっている（上の nothingChanged チェックのおかげ）。
-        try {
-          const assetIds = await loadWallpaperAssetIds();
-          const prevId = assetIds[lv];
-          if (prevId && prevId !== asset.id) {
-            await MediaLibrary.deleteAssetsAsync([prevId]);
-          }
-          await saveWallpaperAssetIds({ ...assetIds, [lv]: asset.id });
-        } catch (e) {
-          console.warn('[wallpaperEngine] failed to remove previous asset for level', lv, e);
-        }
-
+        // 新しい画像をアルバムに追加できたので、「今アルバムで一番新しいのはこれ」として覚えておく。
+        // ※ 以前は同じレベルの古い画像を削除して「上書き」にしていたが、iOSの仕様上
+        //   削除には必ずユーザー確認ダイアログが出て紛らわしいため撤去した。
+        //   そのため「koyomi壁紙」アルバムは保存するたびに増えていく（手動で整理が必要）。
         await saveWallpaperLastApplied({ level: lv, uri: nextPhoto?.uri ?? null });
 
         return {

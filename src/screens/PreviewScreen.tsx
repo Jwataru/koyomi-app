@@ -141,9 +141,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#0c0f14',
     borderRadius: 12,
   },
-  lockContent: { flex: 1, alignItems: 'center', paddingTop: 30, paddingBottom: 20, paddingHorizontal: 16 },
-  lockTime: { color: '#fff', fontSize: 46, fontWeight: '600', letterSpacing: -1, marginTop: 2 },
-  lockDate: { color: 'rgba(255,255,255,0.92)', fontSize: 12, fontWeight: '500' },
+  lockContent: { flex: 1, alignItems: 'center', paddingTop: 46, paddingBottom: 20, paddingHorizontal: 16 },
+  lockTime: { color: '#fff', fontSize: 62, fontWeight: '600', letterSpacing: -1.5, marginTop: 4 },
+  lockDate: { color: 'rgba(255,255,255,0.92)', fontSize: 13, fontWeight: '500' },
   fallbackIcon: {
     marginTop: 20,
     width: 100,

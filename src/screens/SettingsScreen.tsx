@@ -22,7 +22,6 @@ import * as ImagePicker from 'expo-image-picker';
 import {
   requestWallpaperSave,
   regenerateAndApplyWallpaper,
-  runWallpaperShortcut,
   WALLPAPER_SHORTCUT_NAME,
 } from '../services/wallpaperEngine';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -37,10 +36,9 @@ import {
   savePhotoMeta,
   persistPhoto,
   loadOnboarding,
+  saveOnboarding,
   loadWallpaperSaved,
   saveWallpaperSaved,
-  loadAutoApplyOnChange,
-  saveAutoApplyOnChange,
   CycleSettings,
   PhotoMetaMap,
   OnboardingState,
@@ -105,18 +103,22 @@ export default function SettingsScreen() {
   const [savedMap, setSavedMap] = useState<WallpaperSavedMap>({});
   // 切り抜きモーダルに渡す「どのレベルの、どの画像を切り抜いているか」
   const [cropTarget, setCropTarget] = useState<{ level: LevelKey; uri: string } | null>(null);
-  // 「設定」変更時にロック画面まで即座に反映するかどうか
-  const [autoApplyOnChange, setAutoApplyOnChange] = useState(true);
-  const autoApplyOnChangeRef = useRef(true);
   const [applyingNow, setApplyingNow] = useState(false);
-  // 初回マウント直後の commitCycle 発火（周期設定を読み込んだ直後）で
-  // ショートカットが誤って走らないようにするためのガード。
-  // 直近に保存した内容を控えておき、実際に値が変わったときだけ反映処理を行う。
-  const lastCommittedRef = useRef<CycleSettings | null>(null);
+  // 「更新時刻」パネル用（ロック画面連携とは別枠で編集できるようにしたもの）
+  const [updateTime, setUpdateTime] = useState(new Date(2000, 0, 1, 7, 0));
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
-      loadOnboarding().then(setOnboarding);
+      loadOnboarding().then((ob) => {
+        setOnboarding(ob);
+        if (ob.time) {
+          const [h, m] = ob.time.split(':').map(Number);
+          if (!Number.isNaN(h) && !Number.isNaN(m)) {
+            setUpdateTime(new Date(2000, 0, 1, h, m));
+          }
+        }
+      });
     }, [])
   );
 
@@ -125,28 +127,19 @@ export default function SettingsScreen() {
       const c = await loadCycleSettings();
       setNextPeriodDate(c.nextPeriodDate);
       setCycleLen(String(c.cycleLen));
-      lastCommittedRef.current = { nextPeriodDate: c.nextPeriodDate, cycleLen: c.cycleLen };
       setPhotoMeta(await loadPhotoMeta());
       setSavedMap(await loadWallpaperSaved());
-      const auto = await loadAutoApplyOnChange();
-      setAutoApplyOnChange(auto);
-      autoApplyOnChangeRef.current = auto;
     })();
   }, []);
 
-  function toggleAutoApplyOnChange() {
-    const next = !autoApplyOnChange;
-    setAutoApplyOnChange(next);
-    autoApplyOnChangeRef.current = next;
-    saveAutoApplyOnChange(next);
-  }
-
-  // 「今すぐ反映して確認」ボタン用。オートメーションが正しく設定できているかを
-  // 時刻を待たずにその場で確かめられるようにする。
+  // 「設定を反映」ボタン用。画面に今表示している内容（周期・時刻・写真）を
+  // 確実に保存してから、実際のロック画面まで即座に反映する。
   async function applyNow() {
     if (applyingNow) return;
     setApplyingNow(true);
     try {
+      await commitCycle({ nextPeriodDate, cycleLen: Number(cycleLen) || 0 });
+      await commitUpdateTime(updateTime);
       const result = await regenerateAndApplyWallpaper();
       if (!result.success) {
         Alert.alert('反映できませんでした', result.message);
@@ -164,15 +157,22 @@ export default function SettingsScreen() {
       cycleLen: next.cycleLen ?? Number(cycleLen),
     };
     await saveCycleSettings(merged);
-    const prev = lastCommittedRef.current;
-    const changed = !prev || prev.nextPeriodDate !== merged.nextPeriodDate || prev.cycleLen !== merged.cycleLen;
-    lastCommittedRef.current = merged;
-    // 生理予定日や周期の変更でレベル判定が変わりうるため、時刻を待たずに
-    // ロック画面まで反映しておく（実際に値が変わったとき、かつ
-    // 「設定変更時に壁紙へ自動反映」がオンのときのみ）。
-    if (changed && autoApplyOnChangeRef.current) {
-      regenerateAndApplyWallpaper();
-    }
+  }
+
+  // 「更新時刻」パネルでの選択を保存する。
+  // ※ ここで保存されるのはアプリ内の表示用の値で、実際に毎日決まった時刻に
+  //   処理を走らせているのは端末の「ショートカット」アプリ側のオートメーション。
+  //   時刻を変えたら、オートメーション側の時刻もあわせて変更してもらう必要がある。
+  async function commitUpdateTime(time: Date) {
+    const hh = String(time.getHours()).padStart(2, '0');
+    const mm = String(time.getMinutes()).padStart(2, '0');
+    const next: OnboardingState = {
+      platform: onboarding?.platform ?? null,
+      done: onboarding?.done ?? false,
+      time: `${hh}:${mm}`,
+    };
+    setOnboarding(next);
+    await saveOnboarding(next);
   }
 
   // number-pad キーボードには「完了」ボタンが無く、onEndEditingが発火しないことがあるため
@@ -195,6 +195,17 @@ export default function SettingsScreen() {
       const formatted = formatDateKey(selected);
       setNextPeriodDate(formatted);
       commitCycle({ nextPeriodDate: formatted });
+    }
+  }
+
+  function onChangeUpdateTime(event: DateTimePickerEvent, selected?: Date) {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+      if (event.type === 'dismissed') return;
+    }
+    if (selected) {
+      setUpdateTime(selected);
+      commitUpdateTime(selected);
     }
   }
 
@@ -297,11 +308,6 @@ export default function SettingsScreen() {
         };
         setSavedMap(updated);
         await saveWallpaperSaved(updated);
-        // 今表示すべきレベルの写真が変わった可能性があるため、
-        // 「設定変更時に壁紙へ自動反映」がオンならロック画面まで即座に反映する。
-        if (autoApplyOnChangeRef.current) {
-          runWallpaperShortcut();
-        }
       }
     } finally {
       setSavingLevel(null);
@@ -435,51 +441,51 @@ export default function SettingsScreen() {
           <Text style={styles.panelTitle}>ロック画面連携</Text>
           <View style={styles.launchRow}>
             <Text style={styles.launchText}>
-              {onboarding?.done
-                ? `設定済み・毎日${onboarding.time}に自動更新`
-                : 'まだ設定されていません'}
+              {onboarding?.done ? '連携済みです' : 'まだ連携されていません'}
             </Text>
             <Pressable
               style={styles.launchBtn}
               onPress={() => navigation.navigate('Onboarding')}
             >
-              <Text style={styles.launchBtnText}>{onboarding?.done ? '設定を変更' : '連携する'}</Text>
+              <Text style={styles.launchBtnText}>{onboarding?.done ? 'ロック画面連携' : '連携する'}</Text>
             </Pressable>
           </View>
 
           {Platform.OS === 'ios' && (
-            <>
-              <View style={[styles.launchRow, { marginTop: 14 }]}>
-                <Text style={styles.launchText}>
-                  写真や生理予定日を変更したとき、時刻を待たず即ロック画面へ反映する
-                </Text>
-                <Pressable
-                  style={[styles.toggle, autoApplyOnChange && styles.toggleOn]}
-                  onPress={toggleAutoApplyOnChange}
-                >
-                  <View style={[styles.toggleDot, autoApplyOnChange && styles.toggleDotOn]} />
-                </Pressable>
-              </View>
-
-              <View style={[styles.launchRow, { marginTop: 14 }]}>
-                <Text style={styles.launchText}>
-                  オートメーションが正しく動くか、時刻を待たずその場で確認できます。
-                  {'\n'}（ショートカット「{WALLPAPER_SHORTCUT_NAME}」を今すぐ実行します）
-                </Text>
-                <Pressable
-                  style={[styles.launchBtn, applyingNow && styles.updateBtnDisabled]}
-                  onPress={applyNow}
-                  disabled={applyingNow}
-                >
-                  {applyingNow ? (
-                    <ActivityIndicator color={colors.l1} size="small" />
-                  ) : (
-                    <Text style={styles.launchBtnText}>今すぐ反映</Text>
-                  )}
-                </Pressable>
-              </View>
-            </>
+            <View style={[styles.launchRow, { marginTop: 14 }]}>
+              <Text style={styles.launchText}>
+                周期・更新時刻・設定画像など、この画面での変更をロック画面までまとめて反映します。
+                {'\n'}（ショートカット「{WALLPAPER_SHORTCUT_NAME}」を実行します）
+              </Text>
+              <Pressable
+                style={[styles.launchBtn, applyingNow && styles.updateBtnDisabled]}
+                onPress={applyNow}
+                disabled={applyingNow}
+              >
+                {applyingNow ? (
+                  <ActivityIndicator color={colors.l1} size="small" />
+                ) : (
+                  <Text style={styles.launchBtnText}>設定を反映</Text>
+                )}
+              </Pressable>
+            </View>
           )}
+        </View>
+
+        <View style={styles.panel}>
+          <Text style={styles.panelTitle}>更新時刻</Text>
+          <Text style={styles.launchText}>
+            毎日この時刻に、ロック画面の壁紙を自動で更新します。
+            {'\n'}※ 実際の自動実行は端末の「ショートカット」アプリ側のオートメーションが行うため、変更したら同じ時刻をオートメーション側にも設定してください。
+          </Text>
+          <Pressable
+            style={[styles.input, { marginTop: 10, alignSelf: 'flex-start', minWidth: 120 }]}
+            onPress={() => setShowTimePicker(true)}
+          >
+            <Text style={{ color: colors.ink, fontSize: 14 }}>
+              {String(updateTime.getHours()).padStart(2, '0')}:{String(updateTime.getMinutes()).padStart(2, '0')}
+            </Text>
+          </Pressable>
         </View>
 
         <View style={styles.panel}>
@@ -595,6 +601,42 @@ export default function SettingsScreen() {
             display="default"
             onChange={onChangeDate}
           />
+        )
+      )}
+
+      {/* 更新時刻ピッカー */}
+      {Platform.OS === 'ios' ? (
+        <Modal
+          visible={showTimePicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowTimePicker(false)}
+        >
+          <Pressable style={styles.pickerOverlay} onPress={() => setShowTimePicker(false)}>
+            <Pressable style={styles.pickerSheet} onPress={() => {}}>
+              <View style={styles.pickerHead}>
+                <Pressable onPress={() => setShowTimePicker(false)}>
+                  <Text style={styles.pickerCancel}>キャンセル</Text>
+                </Pressable>
+                <Pressable onPress={() => setShowTimePicker(false)}>
+                  <Text style={styles.pickerDone}>完了</Text>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={updateTime}
+                mode="time"
+                display="spinner"
+                locale="ja-JP"
+                onChange={onChangeUpdateTime}
+                textColor={colors.ink}
+                style={styles.pickerWidget}
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
+      ) : (
+        showTimePicker && (
+          <DateTimePicker value={updateTime} mode="time" display="default" onChange={onChangeUpdateTime} />
         )
       )}
 
