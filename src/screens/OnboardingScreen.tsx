@@ -45,7 +45,7 @@ const OB_STEPS: Record<Platform_, Step[]> = {
       icon: '⚑',
       title: 'オートメーションを作成',
       desc:
-        'この時刻に自動で切り替わるようにするには、最後にショートカットアプリ側で1回だけ「オートメーション」を作成する必要があります。下の手順どおりに設定してください。',
+        '毎日自動で切り替わるようにするには、最後にショートカットアプリ側で1回だけ「オートメーション」を作成する必要があります。下の手順どおりに設定してください。',
     },
     {
       icon: '✓',
@@ -79,7 +79,6 @@ function detectPlatform(): Platform_ {
 export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   const [platform, setPlatform] = useState<Platform_>(detectPlatform());
   const [step, setStep] = useState(0);
-  const [time, setTime] = useState(new Date(2000, 0, 1, 7, 0));
   const [batteryExempt, setBatteryExempt] = useState(true);
   const [applyingNow, setApplyingNow] = useState(false);
 
@@ -87,10 +86,6 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
     (async () => {
       const ob = await loadOnboarding();
       if (ob.platform) setPlatform(ob.platform);
-      if (ob.time) {
-        const [h, m] = ob.time.split(':').map(Number);
-        setTime(new Date(2000, 0, 1, h, m));
-      }
     })();
   }, []);
 
@@ -100,9 +95,7 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
 
   async function handleNext() {
     if (isLast) {
-      const hh = String(time.getHours()).padStart(2, '0');
-      const mm = String(time.getMinutes()).padStart(2, '0');
-      const state: OnboardingState = { platform, time: `${hh}:${mm}`, done: true };
+      const state: OnboardingState = { platform, done: true };
       await saveOnboarding(state);
       onDone?.();
     } else {
@@ -167,9 +160,7 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
             {[
               'ショートカットアプリを開き、「オートメーション」タブを選ぶ',
               '右上の「＋」→「個人用オートメーションを作成」を選ぶ',
-              `「時刻」を選び、${String(time.getHours()).padStart(2, '0')}:${String(
-                time.getMinutes()
-              ).padStart(2, '0')}（毎日）に設定して「次へ」`,
+              '「時刻」を選び、毎日更新したい時刻に設定して「次へ」',
               `「アクションを追加」→「ショートカットを実行」→「${WALLPAPER_SHORTCUT_NAME}」を選ぶ`,
               '「実行前に確認」をオフにして完了',
             ].map((line, i) => (

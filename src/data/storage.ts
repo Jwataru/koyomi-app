@@ -34,7 +34,7 @@ export type PhotoMetaMap = Record<LevelKey, PhotoMeta>;
 
 export type OnboardingState = {
   platform: 'ios' | 'android' | null;
-  time: string; // "HH:MM"
+  time?: string; // "HH:MM"（廃止済み。過去バージョンで保存された値との互換のためだけに残している）
   done: boolean;
 };
 

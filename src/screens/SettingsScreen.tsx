@@ -24,7 +24,7 @@ import {
   regenerateAndApplyWallpaper,
 } from '../services/wallpaperEngine';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { colors, LEVELS, LevelKey } from '../theme/theme';
 import LevelIcon from '../components/LevelIcon';
 import CropModal from '../components/CropModal';
@@ -34,13 +34,10 @@ import {
   loadPhotoMeta,
   savePhotoMeta,
   persistPhoto,
-  loadOnboarding,
-  saveOnboarding,
   loadWallpaperSaved,
   saveWallpaperSaved,
   CycleSettings,
   PhotoMetaMap,
-  OnboardingState,
   WallpaperSavedMap,
 } from '../data/storage';
 
@@ -93,7 +90,6 @@ export default function SettingsScreen() {
   const [nextPeriodDate, setNextPeriodDate] = useState('');
   const [cycleLen, setCycleLen] = useState('28');
   const [photoMeta, setPhotoMeta] = useState<PhotoMetaMap | null>(null);
-  const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dragLevel, setDragLevel] = useState<LevelKey | null>(null);
   const [hoverLevel, setHoverLevel] = useState<LevelKey | null>(null);
@@ -102,23 +98,6 @@ export default function SettingsScreen() {
   // 切り抜きモーダルに渡す「どのレベルの、どの画像を切り抜いているか」
   const [cropTarget, setCropTarget] = useState<{ level: LevelKey; uri: string } | null>(null);
   const [applyingNow, setApplyingNow] = useState(false);
-  // 「更新時刻」パネル用（ロック画面連携とは別枠で編集できるようにしたもの）
-  const [updateTime, setUpdateTime] = useState(new Date(2000, 0, 1, 7, 0));
-  const [showTimePicker, setShowTimePicker] = useState(false);
-
-  useFocusEffect(
-    React.useCallback(() => {
-      loadOnboarding().then((ob) => {
-        setOnboarding(ob);
-        if (ob.time) {
-          const [h, m] = ob.time.split(':').map(Number);
-          if (!Number.isNaN(h) && !Number.isNaN(m)) {
-            setUpdateTime(new Date(2000, 0, 1, h, m));
-          }
-        }
-      });
-    }, [])
-  );
 
   useEffect(() => {
     (async () => {
@@ -131,14 +110,13 @@ export default function SettingsScreen() {
   }, []);
 
   // 「すべての設定を反映」ボタン用。画面に今表示している内容
-  // （生理予定日・周期・更新時刻・各レベルの設定画像）をすべて確実に保存してから、
+  // （生理予定日・周期・各レベルの設定画像）をすべて確実に保存してから、
   // 実際のロック画面まで即座に反映する。この画面での保存・反映処理はすべてこの関数に集約する。
   async function applyNow() {
     if (applyingNow) return;
     setApplyingNow(true);
     try {
       await commitCycle({ nextPeriodDate, cycleLen: Number(cycleLen) || 0 });
-      await commitUpdateTime(updateTime);
 
       // 設定済みの各レベルの写真を、それぞれ「koyomi壁紙」アルバムへ保存する
       const currentPhotoMeta = photoMetaRef.current;
@@ -176,22 +154,6 @@ export default function SettingsScreen() {
     await saveCycleSettings(merged);
   }
 
-  // 「更新時刻」パネルでの選択を保存する。
-  // ※ ここで保存されるのはアプリ内の表示用の値で、実際に毎日決まった時刻に
-  //   処理を走らせているのは端末の「ショートカット」アプリ側のオートメーション。
-  //   時刻を変えたら、オートメーション側の時刻もあわせて変更してもらう必要がある。
-  async function commitUpdateTime(time: Date) {
-    const hh = String(time.getHours()).padStart(2, '0');
-    const mm = String(time.getMinutes()).padStart(2, '0');
-    const next: OnboardingState = {
-      platform: onboarding?.platform ?? null,
-      done: onboarding?.done ?? false,
-      time: `${hh}:${mm}`,
-    };
-    setOnboarding(next);
-    await saveOnboarding(next);
-  }
-
   // number-pad キーボードには「完了」ボタンが無く、onEndEditingが発火しないことがあるため
   // 入力が止まってから自動保存する（フォーカスが外れるのを待たない）
   useEffect(() => {
@@ -212,17 +174,6 @@ export default function SettingsScreen() {
       const formatted = formatDateKey(selected);
       setNextPeriodDate(formatted);
       commitCycle({ nextPeriodDate: formatted });
-    }
-  }
-
-  function onChangeUpdateTime(event: DateTimePickerEvent, selected?: Date) {
-    if (Platform.OS === 'android') {
-      setShowTimePicker(false);
-      if (event.type === 'dismissed') return;
-    }
-    if (selected) {
-      setUpdateTime(selected);
-      commitUpdateTime(selected);
     }
   }
 
@@ -403,13 +354,13 @@ export default function SettingsScreen() {
           <Text style={styles.panelTitle}>ロック画面連携</Text>
           <View style={styles.launchRow}>
             <Text style={styles.launchText}>
-              {onboarding?.done ? '連携済みです' : 'まだ連携されていません'}
+              ロック画面へ自動反映するための設定手順を案内します。
             </Text>
             <Pressable
               style={styles.launchBtn}
               onPress={() => navigation.navigate('Onboarding')}
             >
-              <Text style={styles.launchBtnText}>{onboarding?.done ? 'ロック画面連携' : '連携する'}</Text>
+              <Text style={styles.launchBtnText}>連携する</Text>
             </Pressable>
           </View>
         </View>
@@ -436,22 +387,6 @@ export default function SettingsScreen() {
               />
             </View>
           </View>
-        </View>
-
-        <View style={styles.panel}>
-          <Text style={styles.panelTitle}>更新時刻</Text>
-          <Text style={styles.launchText}>
-            毎日この時刻に、ロック画面の壁紙を自動で更新します。
-            {'\n'}※ 実際の自動実行は端末の「ショートカット」アプリ側のオートメーションが行うため、変更したら同じ時刻をオートメーション側にも設定してください。
-          </Text>
-          <Pressable
-            style={[styles.input, { marginTop: 10, alignSelf: 'flex-start', minWidth: 120 }]}
-            onPress={() => setShowTimePicker(true)}
-          >
-            <Text style={{ color: colors.ink, fontSize: 14 }}>
-              {String(updateTime.getHours()).padStart(2, '0')}:{String(updateTime.getMinutes()).padStart(2, '0')}
-            </Text>
-          </Pressable>
         </View>
 
         <View style={styles.panel}>
@@ -564,42 +499,6 @@ export default function SettingsScreen() {
             display="default"
             onChange={onChangeDate}
           />
-        )
-      )}
-
-      {/* 更新時刻ピッカー */}
-      {Platform.OS === 'ios' ? (
-        <Modal
-          visible={showTimePicker}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowTimePicker(false)}
-        >
-          <Pressable style={styles.pickerOverlay} onPress={() => setShowTimePicker(false)}>
-            <Pressable style={styles.pickerSheet} onPress={() => {}}>
-              <View style={styles.pickerHead}>
-                <Pressable onPress={() => setShowTimePicker(false)}>
-                  <Text style={styles.pickerCancel}>キャンセル</Text>
-                </Pressable>
-                <Pressable onPress={() => setShowTimePicker(false)}>
-                  <Text style={styles.pickerDone}>完了</Text>
-                </Pressable>
-              </View>
-              <DateTimePicker
-                value={updateTime}
-                mode="time"
-                display="spinner"
-                locale="ja-JP"
-                onChange={onChangeUpdateTime}
-                textColor={colors.ink}
-                style={styles.pickerWidget}
-              />
-            </Pressable>
-          </Pressable>
-        </Modal>
-      ) : (
-        showTimePicker && (
-          <DateTimePicker value={updateTime} mode="time" display="default" onChange={onChangeUpdateTime} />
         )
       )}
 
