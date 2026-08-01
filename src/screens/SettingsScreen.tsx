@@ -400,6 +400,21 @@ export default function SettingsScreen() {
         scrollEnabled={scrollEnabled}
       >
         <View style={styles.panel}>
+          <Text style={styles.panelTitle}>ロック画面連携</Text>
+          <View style={styles.launchRow}>
+            <Text style={styles.launchText}>
+              {onboarding?.done ? '連携済みです' : 'まだ連携されていません'}
+            </Text>
+            <Pressable
+              style={styles.launchBtn}
+              onPress={() => navigation.navigate('Onboarding')}
+            >
+              <Text style={styles.launchBtnText}>{onboarding?.done ? 'ロック画面連携' : '連携する'}</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.panel}>
           <Text style={styles.panelTitle}>周期設定</Text>
           <View style={styles.row}>
             <View style={styles.field}>
@@ -420,21 +435,6 @@ export default function SettingsScreen() {
                 placeholderTextColor={colors.inkMuted}
               />
             </View>
-          </View>
-        </View>
-
-        <View style={styles.panel}>
-          <Text style={styles.panelTitle}>ロック画面連携</Text>
-          <View style={styles.launchRow}>
-            <Text style={styles.launchText}>
-              {onboarding?.done ? '連携済みです' : 'まだ連携されていません'}
-            </Text>
-            <Pressable
-              style={styles.launchBtn}
-              onPress={() => navigation.navigate('Onboarding')}
-            >
-              <Text style={styles.launchBtnText}>{onboarding?.done ? 'ロック画面連携' : '連携する'}</Text>
-            </Pressable>
           </View>
         </View>
 

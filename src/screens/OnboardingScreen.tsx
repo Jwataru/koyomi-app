@@ -10,7 +10,6 @@ import {
   Linking,
   ActivityIndicator,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors } from '../theme/theme';
 import { loadOnboarding, saveOnboarding, OnboardingState } from '../data/storage';
 import { regenerateAndApplyWallpaper, WALLPAPER_SHORTCUT_NAME } from '../services/wallpaperEngine';
@@ -43,11 +42,6 @@ const OB_STEPS: Record<Platform_, Step[]> = {
       desc: `koyomiが用意した「${WALLPAPER_SHORTCUT_NAME}」ショートカットを、標準のショートカットアプリに1タップで追加します。`,
     },
     {
-      icon: '⟳',
-      title: '更新時刻を選択',
-      desc: '毎日この時刻に、ロック画面の壁紙を自動で更新します。あとから変更もできます。',
-    },
-    {
       icon: '⚑',
       title: 'オートメーションを作成',
       desc:
@@ -64,11 +58,6 @@ const OB_STEPS: Record<Platform_, Step[]> = {
       icon: '◐',
       title: 'ロック画面と連携しませんか',
       desc: 'koyomiの指標を、毎日見るロック画面に自動で表示できます。Androidでは外部アプリの追加は不要で、koyomiが直接ロック画面を更新します。',
-    },
-    {
-      icon: '⟳',
-      title: '更新時刻を選択',
-      desc: '毎日この時刻に、ロック画面の壁紙を自動で更新します。あとから変更もできます。',
     },
     {
       icon: '⚙',
@@ -121,9 +110,8 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
     }
   }
 
-  const showTimePicker = (platform === 'ios' && step === 3) || (platform === 'android' && step === 1);
-  const showBatteryToggle = platform === 'android' && step === 2;
-  const showAutomationGuide = platform === 'ios' && step === 4;
+  const showBatteryToggle = platform === 'android' && step === 1;
+  const showAutomationGuide = platform === 'ios' && step === 3;
   const showConfirmButton = platform === 'ios' && isLast;
 
   async function handleApplyNow() {
@@ -161,19 +149,6 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
         </View>
         <Text style={styles.stepTitle}>{current.title}</Text>
         <Text style={styles.stepDesc}>{current.desc}</Text>
-
-        {showTimePicker && (
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>自動更新する時刻</Text>
-            <DateTimePicker
-              value={time}
-              mode="time"
-              display={Platform.OS === 'ios' ? 'compact' : 'default'}
-              onChange={(_, selected) => selected && setTime(selected)}
-              themeVariant="dark"
-            />
-          </View>
-        )}
 
         {showBatteryToggle && (
           <View style={styles.card}>
