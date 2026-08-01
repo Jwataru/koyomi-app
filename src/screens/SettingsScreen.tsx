@@ -22,7 +22,6 @@ import * as ImagePicker from 'expo-image-picker';
 import {
   requestWallpaperSave,
   regenerateAndApplyWallpaper,
-  WALLPAPER_SHORTCUT_NAME,
 } from '../services/wallpaperEngine';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -99,7 +98,6 @@ export default function SettingsScreen() {
   const [dragLevel, setDragLevel] = useState<LevelKey | null>(null);
   const [hoverLevel, setHoverLevel] = useState<LevelKey | null>(null);
   const [scrollEnabled, setScrollEnabled] = useState(true);
-  const [savingLevel, setSavingLevel] = useState<LevelKey | null>(null);
   const [savedMap, setSavedMap] = useState<WallpaperSavedMap>({});
   // 切り抜きモーダルに渡す「どのレベルの、どの画像を切り抜いているか」
   const [cropTarget, setCropTarget] = useState<{ level: LevelKey; uri: string } | null>(null);
@@ -132,14 +130,33 @@ export default function SettingsScreen() {
     })();
   }, []);
 
-  // 「設定を反映」ボタン用。画面に今表示している内容（周期・時刻・写真）を
-  // 確実に保存してから、実際のロック画面まで即座に反映する。
+  // 「すべての設定を反映」ボタン用。画面に今表示している内容
+  // （生理予定日・周期・更新時刻・各レベルの設定画像）をすべて確実に保存してから、
+  // 実際のロック画面まで即座に反映する。この画面での保存・反映処理はすべてこの関数に集約する。
   async function applyNow() {
     if (applyingNow) return;
     setApplyingNow(true);
     try {
       await commitCycle({ nextPeriodDate, cycleLen: Number(cycleLen) || 0 });
       await commitUpdateTime(updateTime);
+
+      // 設定済みの各レベルの写真を、それぞれ「koyomi壁紙」アルバムへ保存する
+      const currentPhotoMeta = photoMetaRef.current;
+      const nextSavedMap: WallpaperSavedMap = { ...savedMapRef.current };
+      for (const lvl of LEVEL_LIST) {
+        const meta = currentPhotoMeta?.[lvl];
+        if (!meta?.uri) continue;
+        const saveResult = await requestWallpaperSave(lvl);
+        if (!saveResult.success) {
+          Alert.alert('反映できませんでした', saveResult.message);
+          return;
+        }
+        nextSavedMap[lvl] = { uri: meta.uri };
+      }
+      setSavedMap(nextSavedMap);
+      await saveWallpaperSaved(nextSavedMap);
+
+      // 最後に、現在の周期から自動判定したレベルの壁紙を実際のロック画面まで反映する
       const result = await regenerateAndApplyWallpaper();
       if (!result.success) {
         Alert.alert('反映できませんでした', result.message);
@@ -219,15 +236,6 @@ export default function SettingsScreen() {
     savedMapRef.current = savedMap;
   }, [savedMap]);
 
-  // 指定したレベルの現在の写真設定（uri/x/y）が、最後にアルバムへ保存した内容と
-  // 同じかどうか。同じであれば「保存済み」としてボタンをグレーアウトする。
-  function isLevelSaved(level: LevelKey): boolean {
-    const current = photoMeta?.[level];
-    const saved = savedMap[level];
-    if (!current?.uri || !saved) return false;
-    return saved.uri === current.uri;
-  }
-
   async function pickPhoto(level: LevelKey) {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -289,28 +297,6 @@ export default function SettingsScreen() {
     } catch (e) {
       console.error('handleCropConfirm failed', e);
       Alert.alert('画像の保存に失敗しました', String(e));
-    }
-  }
-
-  // 「使用する写真を更新」ボタン用。プレビュー画面まで移動しなくても、
-  // 写真選択・トリミングを終えたその場で「koyomi壁紙」アルバムの当該レベルの画像を更新できるようにする。
-  async function updateWallpaper(level: LevelKey) {
-    if (savingLevel) return;
-    setSavingLevel(level);
-    try {
-      const result = await requestWallpaperSave(level);
-      Alert.alert(result.success ? '更新しました' : '更新できませんでした', result.message);
-      if (result.success) {
-        const meta = photoMetaRef.current?.[level];
-        const updated: WallpaperSavedMap = {
-          ...savedMapRef.current,
-          [level]: { uri: meta?.uri ?? null },
-        };
-        setSavedMap(updated);
-        await saveWallpaperSaved(updated);
-      }
-    } finally {
-      setSavingLevel(null);
     }
   }
 
@@ -450,26 +436,6 @@ export default function SettingsScreen() {
               <Text style={styles.launchBtnText}>{onboarding?.done ? 'ロック画面連携' : '連携する'}</Text>
             </Pressable>
           </View>
-
-          {Platform.OS === 'ios' && (
-            <View style={[styles.launchRow, { marginTop: 14 }]}>
-              <Text style={styles.launchText}>
-                周期・更新時刻・設定画像など、この画面での変更をロック画面までまとめて反映します。
-                {'\n'}（ショートカット「{WALLPAPER_SHORTCUT_NAME}」を実行します）
-              </Text>
-              <Pressable
-                style={[styles.launchBtn, applyingNow && styles.updateBtnDisabled]}
-                onPress={applyNow}
-                disabled={applyingNow}
-              >
-                {applyingNow ? (
-                  <ActivityIndicator color={colors.l1} size="small" />
-                ) : (
-                  <Text style={styles.launchBtnText}>設定を反映</Text>
-                )}
-              </Pressable>
-            </View>
-          )}
         </View>
 
         <View style={styles.panel}>
@@ -537,29 +503,26 @@ export default function SettingsScreen() {
                       <Pressable style={styles.readjustBtn} onPress={() => readjustPhoto(lvl)}>
                         <Text style={styles.readjustBtnText}>位置を調整</Text>
                       </Pressable>
-                      <Pressable
-                        style={[
-                          styles.updateBtn,
-                          isLevelSaved(lvl) && styles.updateBtnSaved,
-                          savingLevel === lvl && styles.updateBtnDisabled,
-                        ]}
-                        onPress={() => updateWallpaper(lvl)}
-                        disabled={savingLevel !== null || isLevelSaved(lvl)}
-                      >
-                        {savingLevel === lvl ? (
-                          <ActivityIndicator color={colors.l1} size="small" />
-                        ) : (
-                          <Text style={[styles.updateBtnText, isLevelSaved(lvl) && styles.updateBtnTextSaved]}>
-                            {isLevelSaved(lvl) ? '保存済み' : '使用する写真を更新'}
-                          </Text>
-                        )}
-                      </Pressable>
                     </View>
                   )}
                 </View>
               );
             })}
           </View>
+
+          {Platform.OS === 'ios' && (
+            <Pressable
+              style={[styles.applyAllBtn, applyingNow && styles.updateBtnDisabled]}
+              onPress={applyNow}
+              disabled={applyingNow}
+            >
+              {applyingNow ? (
+                <ActivityIndicator color={colors.bgDeep} size="small" />
+              ) : (
+                <Text style={styles.applyAllBtnText}>すべての設定を反映</Text>
+              )}
+            </Pressable>
+          )}
         </View>
       </ScrollView>
 
@@ -737,23 +700,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   readjustBtnText: { color: colors.inkMuted, fontSize: 10 },
-  updateBtn: {
-    marginTop: 6,
-    borderWidth: 1,
-    borderColor: colors.l1,
+  updateBtnDisabled: { opacity: 0.6 },
+  applyAllBtn: {
+    marginTop: 20,
+    backgroundColor: colors.l1,
     borderRadius: 14,
-    paddingVertical: 7,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 30,
+    minHeight: 48,
   },
-  updateBtnDisabled: { opacity: 0.6 },
-  updateBtnSaved: {
-    borderColor: colors.hairline,
-    backgroundColor: colors.bgPanel2,
-  },
-  updateBtnText: { color: colors.l1, fontSize: 10, fontWeight: '700' },
-  updateBtnTextSaved: { color: colors.inkMuted, fontWeight: '400' },
+  applyAllBtnText: { color: colors.bgDeep, fontSize: 14, fontWeight: '700' },
   pickerOverlay: {
     flex: 1,
     backgroundColor: 'rgba(8,10,14,0.6)',
