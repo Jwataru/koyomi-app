@@ -42,19 +42,23 @@ const AUTOMATION_GUIDE_STEPS = [
   },
   {
     image: require('../assets/automation-guide/step-2.png'),
-    text: '右上の「＋」→「個人用オートメーションを作成」を選ぶ',
+    text: '「新規オートメーション」を選ぶ',
   },
   {
     image: require('../assets/automation-guide/step-3.png'),
-    text: '「時刻」を選び、毎日更新したい時刻に設定して「次へ」',
+    text: '「時刻」を選ぶ',
   },
-  {
+    {
     image: require('../assets/automation-guide/step-4.png'),
-    text: `「アクションを追加」→「ショートカットを実行」→「${WALLPAPER_SHORTCUT_NAME}」を選ぶ`,
+    text: '「0:00」「毎日」「すぐに実行」を選び、「次へ」',
   },
   {
     image: require('../assets/automation-guide/step-5.png'),
-    text: '「実行前に確認」をオフにして完了',
+    text: `「アクションを追加」→「ショートカットを実行」→「${WALLPAPER_SHORTCUT_NAME}」を選ぶ`,
+  },
+  {
+    image: require('../assets/automation-guide/step-6.png'),
+    text: `オートメーション一覧に「${WALLPAPER_SHORTCUT_NAME}」を確認できたら完了`,
   },
 ];
 
@@ -125,6 +129,7 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   >('unknown');
   const [requestingPerm, setRequestingPerm] = useState(false);
   const [guidePage, setGuidePage] = useState(0);
+  const [carouselWidth, setCarouselWidth] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -194,8 +199,8 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   }
 
   function handleGuideScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    const width = Dimensions.get('window').width - 32; // 画面パディング分を引いたカード幅
-    const page = Math.round(e.nativeEvent.contentOffset.x / width);
+    if (!carouselWidth) return;
+    const page = Math.round(e.nativeEvent.contentOffset.x / carouselWidth);
     if (page !== guidePage) setGuidePage(page);
   }
 
@@ -267,23 +272,35 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
 
         {showAutomationGuide && (
           <View style={styles.guideCard}>
-            <ScrollView
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={handleGuideScroll}
+            <View
               style={styles.guideCarousel}
+              onLayout={(e) => setCarouselWidth(e.nativeEvent.layout.width)}
             >
-              {AUTOMATION_GUIDE_STEPS.map((s, i) => (
-                <View key={i} style={styles.guideSlide}>
-                  <Image source={s.image} style={styles.guideImage} resizeMode="contain" />
-                  <View style={styles.guideRow}>
-                    <Text style={styles.guideIndex}>{i + 1}</Text>
-                    <Text style={styles.guideText}>{s.text}</Text>
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
+              {carouselWidth > 0 && (
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  decelerationRate="fast"
+                  snapToInterval={carouselWidth}
+                  snapToAlignment="start"
+                  disableIntervalMomentum
+                  onMomentumScrollEnd={handleGuideScroll}
+                >
+                  {AUTOMATION_GUIDE_STEPS.map((s, i) => (
+                    <View key={i} style={[styles.guideSlide, { width: carouselWidth }]}>
+                      <View style={styles.guideStepBadge}>
+                        <Text style={styles.guideStepBadgeText}>STEP {i + 1}</Text>
+                      </View>
+                      <View style={styles.guideImageFrame}>
+                        <Image source={s.image} style={styles.guideImage} resizeMode="cover" />
+                      </View>
+                      <Text style={styles.guideText}>{s.text}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
             <View style={styles.guideDots}>
               {AUTOMATION_GUIDE_STEPS.map((_, i) => (
                 <View key={i} style={[styles.guideDot, i === guidePage && styles.guideDotOn]} />
@@ -386,25 +403,36 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   guideCarousel: { width: '100%' },
-  guideSlide: { width: Dimensions.get('window').width - 32 - 28, paddingRight: 4 },
-  guideImage: {
+  guideSlide: { paddingHorizontal: 4 },
+  guideStepBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(120, 200, 160, 0.15)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginBottom: 8,
+  },
+  guideStepBadgeText: { color: colors.l1, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  guideImageFrame: {
     width: '100%',
-    height: 320,
-    borderRadius: 8,
+    aspectRatio: 9 / 19.5,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.hairline,
     backgroundColor: '#12161C',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
     marginBottom: 10,
   },
+  guideImage: { width: '100%', height: '100%' },
   guideDots: { flexDirection: 'row', gap: 5, justifyContent: 'center', marginTop: 2 },
   guideDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: colors.hairline },
   guideDotOn: { backgroundColor: colors.l1 },
-  guideRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
-  guideIndex: {
-    color: colors.l1,
-    fontSize: 11,
-    fontWeight: '700',
-    width: 16,
-  },
-  guideText: { color: colors.inkMuted, fontSize: 12, lineHeight: 18, flex: 1 },
+  guideText: { color: colors.inkMuted, fontSize: 13, lineHeight: 19, textAlign: 'center' },
   toggle: { width: 34, height: 20, borderRadius: 10, backgroundColor: colors.hairline, padding: 2 },
   toggleOn: { backgroundColor: colors.l1 },
   toggleDot: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#12161C' },
