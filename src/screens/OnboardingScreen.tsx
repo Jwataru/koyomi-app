@@ -9,6 +9,10 @@ import {
   ScrollView,
   Linking,
   ActivityIndicator,
+  Image,
+  Dimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import * as MediaLibrary from 'expo-media-library';
 import { colors } from '../theme/theme';
@@ -26,6 +30,33 @@ import {
 // リリース時はShortcutsアプリで配信用コピーを更新→共有→リンクを取得し、この値を差し替える。
 // .shortcutファイル自体の履歴・バックアップはGitHub（shortcuts/koyomi.shortcut）で別途管理する。
 const SHORTCUT_ADD_URL = 'https://www.icloud.com/shortcuts/6199dd6a3078494f94ede0697ad2d01d';
+
+// オートメーション作成手順のスクリーンショット。
+// 実機のShortcutsアプリを操作しながら各ステップのスクショを撮り、
+// src/assets/automation-guide/ 配下に同じファイル名で配置してください。
+// （Apple純正UIのスクリーンショットのため、コード側では用意できません）
+const AUTOMATION_GUIDE_STEPS = [
+  {
+    image: require('../assets/automation-guide/step-1.png'),
+    text: 'ショートカットアプリを開き、「オートメーション」タブを選ぶ',
+  },
+  {
+    image: require('../assets/automation-guide/step-2.png'),
+    text: '右上の「＋」→「個人用オートメーションを作成」を選ぶ',
+  },
+  {
+    image: require('../assets/automation-guide/step-3.png'),
+    text: '「時刻」を選び、毎日更新したい時刻に設定して「次へ」',
+  },
+  {
+    image: require('../assets/automation-guide/step-4.png'),
+    text: `「アクションを追加」→「ショートカットを実行」→「${WALLPAPER_SHORTCUT_NAME}」を選ぶ`,
+  },
+  {
+    image: require('../assets/automation-guide/step-5.png'),
+    text: '「実行前に確認」をオフにして完了',
+  },
+];
 
 type Platform_ = 'ios' | 'android';
 
@@ -93,6 +124,7 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
     'unknown' | 'granted' | 'limited' | 'denied'
   >('unknown');
   const [requestingPerm, setRequestingPerm] = useState(false);
+  const [guidePage, setGuidePage] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -159,6 +191,12 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
       // 開けない場合はショートカットアプリ自体を開く
       Linking.openURL('shortcuts://').catch(() => {});
     }
+  }
+
+  function handleGuideScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    const width = Dimensions.get('window').width - 32; // 画面パディング分を引いたカード幅
+    const page = Math.round(e.nativeEvent.contentOffset.x / width);
+    if (page !== guidePage) setGuidePage(page);
   }
 
   return (
@@ -229,18 +267,28 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
 
         {showAutomationGuide && (
           <View style={styles.guideCard}>
-            {[
-              'ショートカットアプリを開き、「オートメーション」タブを選ぶ',
-              '右上の「＋」→「個人用オートメーションを作成」を選ぶ',
-              '「時刻」を選び、毎日更新したい時刻に設定して「次へ」',
-              `「アクションを追加」→「ショートカットを実行」→「${WALLPAPER_SHORTCUT_NAME}」を選ぶ`,
-              '「実行前に確認」をオフにして完了',
-            ].map((line, i) => (
-              <View key={i} style={styles.guideRow}>
-                <Text style={styles.guideIndex}>{i + 1}</Text>
-                <Text style={styles.guideText}>{line}</Text>
-              </View>
-            ))}
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={handleGuideScroll}
+              style={styles.guideCarousel}
+            >
+              {AUTOMATION_GUIDE_STEPS.map((s, i) => (
+                <View key={i} style={styles.guideSlide}>
+                  <Image source={s.image} style={styles.guideImage} resizeMode="contain" />
+                  <View style={styles.guideRow}>
+                    <Text style={styles.guideIndex}>{i + 1}</Text>
+                    <Text style={styles.guideText}>{s.text}</Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+            <View style={styles.guideDots}>
+              {AUTOMATION_GUIDE_STEPS.map((_, i) => (
+                <View key={i} style={[styles.guideDot, i === guidePage && styles.guideDotOn]} />
+              ))}
+            </View>
             <Pressable
               style={styles.ghostBtn}
               onPress={() => Linking.openURL('shortcuts://').catch(() => {})}
@@ -337,6 +385,18 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 10,
   },
+  guideCarousel: { width: '100%' },
+  guideSlide: { width: Dimensions.get('window').width - 32 - 28, paddingRight: 4 },
+  guideImage: {
+    width: '100%',
+    height: 320,
+    borderRadius: 8,
+    backgroundColor: '#12161C',
+    marginBottom: 10,
+  },
+  guideDots: { flexDirection: 'row', gap: 5, justifyContent: 'center', marginTop: 2 },
+  guideDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: colors.hairline },
+  guideDotOn: { backgroundColor: colors.l1 },
   guideRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   guideIndex: {
     color: colors.l1,
