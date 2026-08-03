@@ -10,9 +10,20 @@ import {
   Linking,
   ActivityIndicator,
 } from 'react-native';
+import * as MediaLibrary from 'expo-media-library';
 import { colors } from '../theme/theme';
 import { loadOnboarding, saveOnboarding, OnboardingState } from '../data/storage';
-import { regenerateAndApplyWallpaper, WALLPAPER_SHORTCUT_NAME } from '../services/wallpaperEngine';
+import {
+  regenerateAndApplyWallpaper,
+  WALLPAPER_SHORTCUT_NAME,
+  WALLPAPER_ALBUM_NAME,
+} from '../services/wallpaperEngine';
+
+// Shortcutsアプリで一度手動で作成した「koyomi壁紙を更新」ショートカットを
+// 共有→「iCloudリンクをコピー」して差し替える。
+// アプリ側でショートカットの中身を動的生成することはできないため、
+// 開発者が作った雛形を配布する形になる（中身を変えたら都度リンクを取り直す）。
+const SHORTCUT_ADD_URL = 'https://www.icloud.com/shortcuts/e80fc05a091a4a71929b3715836da08e';
 
 type Platform_ = 'ios' | 'android';
 
@@ -27,19 +38,14 @@ type Step = {
 const OB_STEPS: Record<Platform_, Step[]> = {
   ios: [
     {
-      icon: '◐',
-      title: 'ロック画面と連携しませんか',
-      desc: 'koyomiの指標を、毎日見るロック画面に自動で表示できます。iOSでは「ショートカット」アプリと連携して反映します。',
-    },
-    {
       icon: '▣',
-      title: '専用アルバムへの保存を許可',
-      desc: '生成した画像を「koyomi壁紙」という専用アルバムに保存します。他の写真にはアクセスしません。',
+      title: '写真への保存を許可',
+      desc: `koyomiが生成した壁紙画像は「${WALLPAPER_ALBUM_NAME}」という専用アルバムに保存されます。このアルバムはまだ作られておらず、実際に作られるのは最初に壁紙を保存したタイミングです。まずは写真への操作を許可してください。`,
     },
     {
       icon: '⇩',
       title: 'ショートカットを追加',
-      desc: `koyomiが用意した「${WALLPAPER_SHORTCUT_NAME}」ショートカットを、標準のショートカットアプリに1タップで追加します。`,
+      desc: `koyomiが用意した「${WALLPAPER_SHORTCUT_NAME}」ショートカットを、下のボタンからショートカットアプリに追加してください。`,
     },
     {
       icon: '⚑',
@@ -81,6 +87,10 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   const [step, setStep] = useState(0);
   const [batteryExempt, setBatteryExempt] = useState(true);
   const [applyingNow, setApplyingNow] = useState(false);
+  const [photoPermStatus, setPhotoPermStatus] = useState<
+    'unknown' | 'granted' | 'limited' | 'denied'
+  >('unknown');
+  const [requestingPerm, setRequestingPerm] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -104,7 +114,9 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   }
 
   const showBatteryToggle = platform === 'android' && step === 1;
-  const showAutomationGuide = platform === 'ios' && step === 3;
+  const showPhotoPermission = platform === 'ios' && step === 0;
+  const showAddShortcut = platform === 'ios' && step === 1;
+  const showAutomationGuide = platform === 'ios' && step === 2;
   const showConfirmButton = platform === 'ios' && isLast;
 
   async function handleApplyNow() {
@@ -114,6 +126,32 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
       await regenerateAndApplyWallpaper();
     } finally {
       setApplyingNow(false);
+    }
+  }
+
+  async function handleRequestPhotoPermission() {
+    if (requestingPerm) return;
+    setRequestingPerm(true);
+    try {
+      const perm = await MediaLibrary.requestPermissionsAsync();
+      if (perm.status !== 'granted') {
+        setPhotoPermStatus('denied');
+      } else if (perm.accessPrivileges === 'limited') {
+        setPhotoPermStatus('limited');
+      } else {
+        setPhotoPermStatus('granted');
+      }
+    } finally {
+      setRequestingPerm(false);
+    }
+  }
+
+  async function handleAddShortcut() {
+    try {
+      await Linking.openURL(SHORTCUT_ADD_URL);
+    } catch {
+      // iCloudリンクが開けない場合はショートカットアプリ自体を開く
+      Linking.openURL('shortcuts://').catch(() => {});
     }
   }
 
@@ -142,6 +180,34 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
         </View>
         <Text style={styles.stepTitle}>{current.title}</Text>
         <Text style={styles.stepDesc}>{current.desc}</Text>
+
+        {showPhotoPermission && (
+          <Pressable
+            style={[styles.card, styles.confirmCard]}
+            onPress={handleRequestPhotoPermission}
+            disabled={requestingPerm || photoPermStatus === 'granted'}
+          >
+            {requestingPerm ? (
+              <ActivityIndicator color={colors.l1} size="small" />
+            ) : (
+              <Text style={styles.cardLabel}>
+                {photoPermStatus === 'granted'
+                  ? '許可済みです'
+                  : photoPermStatus === 'limited'
+                  ? '一部の写真のみ許可されています（設定アプリから「すべての写真」に変更できます）'
+                  : photoPermStatus === 'denied'
+                  ? '許可されませんでした（設定アプリから変更できます）'
+                  : '写真へのアクセスを許可する'}
+              </Text>
+            )}
+          </Pressable>
+        )}
+
+        {showAddShortcut && (
+          <Pressable style={[styles.card, styles.confirmCard]} onPress={handleAddShortcut}>
+            <Text style={styles.cardLabel}>{`「${WALLPAPER_SHORTCUT_NAME}」を追加する`}</Text>
+          </Pressable>
+        )}
 
         {showBatteryToggle && (
           <View style={styles.card}>
