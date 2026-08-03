@@ -138,6 +138,20 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
     })();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      // 許可ダイアログを出さずに現在の許可状態だけを確認する
+      const perm = await MediaLibrary.getPermissionsAsync();
+      if (perm.status !== 'granted') {
+        if (perm.status === 'denied') setPhotoPermStatus('denied');
+      } else if (perm.accessPrivileges === 'limited') {
+        setPhotoPermStatus('limited');
+      } else {
+        setPhotoPermStatus('granted');
+      }
+    })();
+  }, []);
+
   const steps = OB_STEPS[platform];
   const current = steps[step];
   const isLast = step === steps.length - 1;
