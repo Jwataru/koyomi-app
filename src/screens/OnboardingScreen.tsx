@@ -19,11 +19,12 @@ import {
   WALLPAPER_ALBUM_NAME,
 } from '../services/wallpaperEngine';
 
-// Shortcutsアプリで一度手動で作成した「koyomi壁紙を更新」ショートカットを
-// 共有→「iCloudリンクをコピー」して差し替える。
-// アプリ側でショートカットの中身を動的生成することはできないため、
-// 開発者が作った雛形を配布する形になる（中身を変えたら都度リンクを取り直す）。
-const SHORTCUT_ADD_URL = 'https://www.icloud.com/shortcuts/e80fc05a091a4a71929b3715836da08e';
+// GitHubにpushしたタグ付き.shortcutファイルをjsDelivr経由でホストする。
+// v1.0.0のようにタグを指定すればURLの中身は固定され、開発中にmainブランチを
+// 更新しても本番ユーザーが取得する内容は変わらない（別バージョンを出す時はタグとURLを両方更新する）。
+// <user>/<repo> は実際のGitHubユーザー名・リポジトリ名に差し替え可能（プレースホルダーのままでも動作確認は可能）。
+const SHORTCUT_TAG = 'v1.0.0';
+const SHORTCUT_ADD_URL = `https://cdn.jsdelivr.net/gh/Jwataru/koyomi-app@${SHORTCUT_TAG}/shortcuts/koyomi.shortcut`;
 
 type Platform_ = 'ios' | 'android';
 
@@ -147,10 +148,14 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   }
 
   async function handleAddShortcut() {
+    const importUrl =
+      'shortcuts://import-workflow' +
+      `?url=${encodeURIComponent(SHORTCUT_ADD_URL)}` +
+      `&name=${encodeURIComponent(WALLPAPER_SHORTCUT_NAME)}`;
     try {
-      await Linking.openURL(SHORTCUT_ADD_URL);
+      await Linking.openURL(importUrl);
     } catch {
-      // iCloudリンクが開けない場合はショートカットアプリ自体を開く
+      // 開けない場合はショートカットアプリ自体を開く
       Linking.openURL('shortcuts://').catch(() => {});
     }
   }
