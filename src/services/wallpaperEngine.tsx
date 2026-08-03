@@ -24,10 +24,10 @@ export const WALLPAPER_ALBUM_NAME = 'koyomi壁紙';
 
 // オンボーディングの案内文どおりにユーザーがショートカットアプリに作成する想定の名前。
 // ユーザー側で別名にした場合は連携できなくなるため、設定画面でも同じ名前を案内する。
-export const WALLPAPER_SHORTCUT_NAME = 'koyomi壁紙を更新';
+export const WALLPAPER_SHORTCUT_NAME = 'koyomi';
 
 /**
- * 「koyomi壁紙を更新」ショートカットをその場で実行する（iOSのみ）。
+ * 「koyomi」ショートカットをその場で実行する（iOSのみ）。
  * ショートカットの中の「壁紙を設定」アクションまで通しで動かすことで、
  * アプリ内の保存だけでなく、実際のロック画面の見た目までその場で切り替える。
  * アプリ自身はOS標準の壁紙設定APIを直接呼べないため、この一手間が必要になる。

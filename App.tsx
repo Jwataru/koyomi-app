@@ -49,7 +49,7 @@ function Tabs() {
 
 // ショートカット（や他アプリ）から koyomi://update-wallpaper を開かれたときに、
 // 現在のレベルの壁紙を再生成してアルバムへ保存する。
-// 「koyomi壁紙を更新」ショートカットの「Open URL」アクションから呼ばれる想定。
+// 「koyomi」ショートカットの「Open URL」アクションから呼ばれる想定。
 function handleDeepLink(url: string | null) {
   if (!url) return;
   if (!url.includes('update-wallpaper')) return;
