@@ -54,7 +54,7 @@ const AUTOMATION_GUIDE_STEPS = [
   },
   {
     image: require('../assets/automation-guide/step-5.png'),
-    text: `「アクションを追加」→「ショートカットを実行」→「${WALLPAPER_SHORTCUT_NAME}」を選ぶ`,
+    text: `「${WALLPAPER_SHORTCUT_NAME}」を選ぶ`,
   },
   {
     image: require('../assets/automation-guide/step-6.png'),
@@ -88,7 +88,7 @@ const OB_STEPS: Record<Platform_, Step[]> = {
       icon: '⚑',
       title: 'オートメーションを作成',
       desc:
-        '毎日自動で切り替わるようにするには、最後にショートカットアプリ側で1回だけ「オートメーション」を作成する必要があります。下の手順どおりに設定してください。',
+        '毎日自動で切り替わるようにするには、最初に一度だけにショートカットアプリ側で「オートメーション」を作成する必要があります。下の手順どおりに設定してください。',
     },
     {
       icon: '✓',
