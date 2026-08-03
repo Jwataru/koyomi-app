@@ -93,7 +93,7 @@ const OB_STEPS: Record<Platform_, Step[]> = {
     {
       icon: '✓',
       title: '設定が完了しました',
-      desc: 'オートメーションが正しく作成できていれば、設定した時刻にkoyomiの指標がロック画面へ自動で反映されます。',
+      desc: 'おつかれさまでした。設定した時刻にkoyomiの指標がロック画面へ自動で反映されます。',
     },
   ],
   android: [
@@ -315,19 +315,7 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
           </View>
         )}
 
-        {showConfirmButton && (
-          <Pressable
-            style={[styles.card, styles.confirmCard]}
-            onPress={handleApplyNow}
-            disabled={applyingNow}
-          >
-            {applyingNow ? (
-              <ActivityIndicator color={colors.l1} size="small" />
-            ) : (
-              <Text style={styles.cardLabel}>今すぐ反映して確認する</Text>
-            )}
-          </Pressable>
-        )}
+        {showConfirmButton}
 
         <View style={styles.dots}>
           {steps.map((_, i) => (
