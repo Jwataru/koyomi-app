@@ -23,7 +23,7 @@ import {
 // v1.0.0のようにタグを指定すればURLの中身は固定され、開発中にmainブランチを
 // 更新しても本番ユーザーが取得する内容は変わらない（別バージョンを出す時はタグとURLを両方更新する）。
 // <user>/<repo> は実際のGitHubユーザー名・リポジトリ名に差し替え可能（プレースホルダーのままでも動作確認は可能）。
-const SHORTCUT_TAG = 'v1.0.0';
+const SHORTCUT_TAG = 'v1.0.1';
 const SHORTCUT_ADD_URL = `https://cdn.jsdelivr.net/gh/Jwataru/koyomi-app@${SHORTCUT_TAG}/shortcuts/koyomi.shortcut`;
 
 type Platform_ = 'ios' | 'android';
