@@ -74,7 +74,7 @@ export default function TodayScreen() {
             <View key={lvl} style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: LEVELS[lvl].hex }]} />
               <Text style={styles.legendText}>
-                レベル{lvl} {LEVELS[lvl].name}
+                {lvl} {LEVELS[lvl].name}
               </Text>
             </View>
           ))}
