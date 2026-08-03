@@ -19,12 +19,13 @@ import {
   WALLPAPER_ALBUM_NAME,
 } from '../services/wallpaperEngine';
 
-// GitHubにpushしたタグ付き.shortcutファイルをjsDelivr経由でホストする。
-// v1.0.0のようにタグを指定すればURLの中身は固定され、開発中にmainブランチを
-// 更新しても本番ユーザーが取得する内容は変わらない（別バージョンを出す時はタグとURLを両方更新する）。
-// <user>/<repo> は実際のGitHubユーザー名・リポジトリ名に差し替え可能（プレースホルダーのままでも動作確認は可能）。
-const SHORTCUT_TAG = 'v1.0.2';
-const SHORTCUT_ADD_URL = `https://cdn.jsdelivr.net/gh/Jwataru/koyomi-app@${SHORTCUT_TAG}/shortcuts/koyomi.shortcut`;
+// Shortcutsアプリで「共有」→「iCloudリンクをコピー」して取得したリンクをそのまま設定する。
+// iCloudの共有リンクはHTMLページ（ユニバーサルリンク）であり、生の.shortcutファイルではないため
+// shortcuts://import-shortcut?url=... でラップして渡すと「ファイルのフォーマットが正しくありません」になる。
+// 直接開くと、OSがユニバーサルリンクとしてShortcutsアプリの「ショートカットを入手」画面へルーティングする。
+// リリース時はShortcutsアプリで配信用コピーを更新→共有→リンクを取得し、この値を差し替える。
+// .shortcutファイル自体の履歴・バックアップはGitHub（shortcuts/koyomi.shortcut）で別途管理する。
+const SHORTCUT_ADD_URL = 'https://www.icloud.com/shortcuts/6199dd6a3078494f94ede0697ad2d01d';
 
 type Platform_ = 'ios' | 'android';
 
@@ -148,12 +149,12 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   }
 
   async function handleAddShortcut() {
-    const importUrl =
-      'shortcuts://import-workflow' +
-      `?url=${encodeURIComponent(SHORTCUT_ADD_URL)}` +
-      `&name=${encodeURIComponent(WALLPAPER_SHORTCUT_NAME)}`;
     try {
-      await Linking.openURL(importUrl);
+      // iCloudの共有リンクはユニバーサルリンクなので、そのまま開けばOSが
+      // Shortcutsアプリの「ショートカットを入手」画面へルーティングしてくれる。
+      // import-shortcut/import-workflowでラップすると生の.shortcutファイルが
+      // 期待されてしまい、HTMLページであるiCloudリンクでは失敗するため使わない。
+      await Linking.openURL(SHORTCUT_ADD_URL);
     } catch {
       // 開けない場合はショートカットアプリ自体を開く
       Linking.openURL('shortcuts://').catch(() => {});
