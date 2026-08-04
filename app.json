@@ -6,6 +6,7 @@
     "scheme": "koyomi",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
     "splash": {
       "backgroundColor": "#0F1319"
     },
