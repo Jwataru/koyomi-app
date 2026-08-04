@@ -16,6 +16,7 @@ const KEYS = {
   onboarding: 'koyomi:onboarding',
   wallpaperSaved: 'koyomi:wallpaperSaved',
   wallpaperLastApplied: 'koyomi:wallpaperLastApplied',
+  todos: 'koyomi:todos',
 } as const;
 
 export type CycleSettings = {
@@ -42,6 +43,15 @@ export type OnboardingState = {
 // これと現在の photoMeta を比較して、保存済みかどうか（＝ボタンをグレーアウトするか）を判定する。
 export type WallpaperSavedSnapshot = { uri: string | null };
 export type WallpaperSavedMap = Partial<Record<LevelKey, WallpaperSavedSnapshot>>;
+
+// Todayタブに追加したTODOリスト用。
+// checkedAt が null のものは未完了、値が入っているものはチェック済み（チェックした日時のISO文字列）。
+export type TodoItem = {
+  id: string;
+  text: string;
+  checkedAt: string | null;
+  createdAt: string;
+};
 
 const DEFAULT_CYCLE: CycleSettings = { nextPeriodDate: '', cycleLen: 28 };
 const DEFAULT_PHOTO_META: PhotoMetaMap = {
@@ -80,6 +90,9 @@ export const saveOnboarding = (v: OnboardingState) => setJSON(KEYS.onboarding, v
 
 export const loadWallpaperSaved = () => getJSON(KEYS.wallpaperSaved, {} as WallpaperSavedMap);
 export const saveWallpaperSaved = (v: WallpaperSavedMap) => setJSON(KEYS.wallpaperSaved, v);
+
+export const loadTodos = () => getJSON(KEYS.todos, [] as TodoItem[]);
+export const saveTodos = (v: TodoItem[]) => setJSON(KEYS.todos, v);
 
 // 「今、アルバムの中で一番新しい（＝ショートカットの『最新の写真』が拾う）のはどのレベルの
 // どの写真か」を覚えておくためのもの。ここが今回のリクエストと一致していれば、
