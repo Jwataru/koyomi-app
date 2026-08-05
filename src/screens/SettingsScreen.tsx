@@ -54,6 +54,7 @@ import {
   sendTestTrialNotification,
   listScheduledNotifications,
 } from '../services/notifications';
+import { usePurchasePro } from '../services/iap';
 
 // 実機の壁紙生成キャンバス（wallpaperEngine）はこの画面サイズをそのまま使う。
 // 設定画面のプレビュー枠・プレビュー画面（PreviewScreen）・実際の壁紙出力の
@@ -116,6 +117,40 @@ export default function SettingsScreen() {
 
   const reloadTrialStatus = async () => {
     setTrialStatus(await getTrialStatus());
+  };
+
+  const [isBuyingPro, setIsBuyingPro] = useState(false);
+  const { connected: iapConnected, proProduct, buyPro, restorePro, purchaseError } = usePurchasePro({
+    onUnlocked: reloadTrialStatus,
+  });
+
+  useEffect(() => {
+    if (purchaseError) {
+      Alert.alert('購入できませんでした', purchaseError.message ?? 'しばらくしてからもう一度お試しください。');
+    }
+  }, [purchaseError]);
+
+  const handleBuyPro = async () => {
+    setIsBuyingPro(true);
+    try {
+      await buyPro();
+    } catch (e: any) {
+      Alert.alert('購入できませんでした', e?.message ?? 'しばらくしてからもう一度お試しください。');
+    } finally {
+      setIsBuyingPro(false);
+    }
+  };
+
+  const handleRestorePro = async () => {
+    setIsBuyingPro(true);
+    try {
+      await restorePro();
+      Alert.alert('確認しました', '購入済みの場合、自動的にPro版が有効になります。');
+    } catch (e: any) {
+      Alert.alert('復元できませんでした', e?.message ?? 'しばらくしてからもう一度お試しください。');
+    } finally {
+      setIsBuyingPro(false);
+    }
   };
 
   useEffect(() => {
@@ -370,6 +405,40 @@ export default function SettingsScreen() {
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}
       >
+        <View style={styles.panel}>
+          <Text style={styles.panelTitle}>Pro版（買い切り）</Text>
+          {trialStatus?.isPro ? (
+            <View style={styles.proOwnedRow}>
+              <Text style={styles.proOwnedText}>✓ Pro版をご利用中です</Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.proDescText}>
+                買い切りで無料期間の制限がなくなり、ロック画面自動連携をずっと使い続けられます。
+              </Text>
+              <View style={styles.proBuyRow}>
+                <Text style={styles.proPriceText}>
+                  {proProduct?.displayPrice ?? (iapConnected ? '¥ー' : '読み込み中...')}
+                </Text>
+                <Pressable
+                  style={[styles.proBuyBtn, isBuyingPro && styles.updateBtnDisabled]}
+                  onPress={handleBuyPro}
+                  disabled={isBuyingPro}
+                >
+                  {isBuyingPro ? (
+                    <ActivityIndicator color={colors.bgDeep} />
+                  ) : (
+                    <Text style={styles.proBuyBtnText}>購入する</Text>
+                  )}
+                </Pressable>
+              </View>
+              <Pressable onPress={handleRestorePro} disabled={isBuyingPro} style={styles.proRestoreBtn}>
+                <Text style={styles.proRestoreBtnText}>購入済みの方はこちら（購入を復元）</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+
         <View style={styles.panel}>
           <Text style={styles.panelTitle}>ロック画面連携</Text>
           {trialStatus?.trialExpired ? (
@@ -831,6 +900,31 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   applyAllBtnText: { color: colors.bgDeep, fontSize: 14, fontWeight: '700' },
+
+  proDescText: { color: colors.inkMuted, fontSize: 12, lineHeight: 18, marginBottom: 14 },
+  proBuyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  proPriceText: { color: colors.ink, fontSize: 18, fontWeight: '700' },
+  proBuyBtn: {
+    backgroundColor: colors.l1,
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+    minWidth: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proBuyBtnText: { color: colors.bgDeep, fontSize: 14, fontWeight: '700' },
+  proRestoreBtn: { marginTop: 14, alignItems: 'center' },
+  proRestoreBtnText: { color: colors.inkMuted, fontSize: 11, textDecorationLine: 'underline' },
+  proOwnedRow: {
+    backgroundColor: colors.l1Soft,
+    borderWidth: 1,
+    borderColor: colors.l1,
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+  },
+  proOwnedText: { color: colors.l1, fontSize: 13, fontWeight: '700' },
 
   trialExpiredBanner: {
     backgroundColor: colors.l4Soft,
