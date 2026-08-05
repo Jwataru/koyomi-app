@@ -1,0 +1,10 @@
+node_modules/
+.expo/
+dist/
+
+# ios/ と android/ は `npm run ios:clean`（rm -rf → expo prebuild）で毎回まるごと
+# 再生成する運用にしたため、丸ごとgit管理から外す（Expoの Continuous Native
+# Generation の標準的なやり方）。ネイティブ側のカスタム設定は app.json と
+# plugins/ 配下に持たせること。
+ios/
+android/
