@@ -35,7 +35,8 @@
           "savePhotosPermission": "koyomiが生成した壁紙を専用アルバムに保存するために使用します。",
           "isAccessMediaLocationEnabled": false
         }
-      ]
+      ],
+      "expo-notifications"
     ]
   }
 }

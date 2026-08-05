@@ -13,7 +13,8 @@ import PreviewScreen from './src/screens/PreviewScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import { colors } from './src/theme/theme';
 import WallpaperEngine, { requestWallpaperSave } from './src/services/wallpaperEngine';
-import { ensureFirstLaunchRecorded } from './src/logic/trial';
+import { ensureFirstLaunchRecorded, getTrialStatus } from './src/logic/trial';
+import { scheduleTrialNotifications } from './src/services/notifications';
 
 const Tab = createBottomTabNavigator();
 const RootStack = createNativeStackNavigator();
@@ -66,7 +67,15 @@ function handleDeepLink(url: string | null) {
 export default function App() {
   useEffect(() => {
     // 無料期間（60日）の起算日を記録する。すでに記録済みなら何もしない。
-    ensureFirstLaunchRecorded();
+    (async () => {
+      const firstLaunchAt = await ensureFirstLaunchRecorded();
+      const trial = await getTrialStatus();
+      // 購入済みなら予告通知は不要。未購入なら「残り7日/1日/当日」を（再）スケジュールしておく。
+      // 同じ内容で呼んでも安全な作りなので、起動のたびに呼んでも重複登録されない。
+      if (!trial.isPro) {
+        scheduleTrialNotifications(firstLaunchAt);
+      }
+    })();
 
     Linking.getInitialURL().then(handleDeepLink);
     const sub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));

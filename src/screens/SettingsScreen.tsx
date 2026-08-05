@@ -47,6 +47,12 @@ import {
   TrialStatus,
   TRIAL_DAYS,
 } from '../logic/trial';
+import {
+  scheduleTrialNotifications,
+  cancelTrialNotifications,
+  sendTestNotification,
+  listScheduledNotifications,
+} from '../services/notifications';
 
 // 実機の壁紙生成キャンバス（wallpaperEngine）はこの画面サイズをそのまま使う。
 // 設定画面のプレビュー枠・プレビュー画面（PreviewScreen）・実際の壁紙出力の
@@ -516,6 +522,7 @@ export default function SettingsScreen() {
                 style={styles.devBtn}
                 onPress={async () => {
                   await debugSetProUnlocked(true);
+                  await cancelTrialNotifications();
                   await reloadTrialStatus();
                 }}
               >
@@ -525,6 +532,8 @@ export default function SettingsScreen() {
                 style={styles.devBtn}
                 onPress={async () => {
                   await debugSetProUnlocked(false);
+                  const status = await getTrialStatus();
+                  await scheduleTrialNotifications(status.firstLaunchAt);
                   await reloadTrialStatus();
                 }}
               >
@@ -537,6 +546,8 @@ export default function SettingsScreen() {
                 style={styles.devBtn}
                 onPress={async () => {
                   await debugSetFirstLaunchDaysAgo(TRIAL_DAYS + 5);
+                  const status = await getTrialStatus();
+                  await scheduleTrialNotifications(status.firstLaunchAt);
                   await reloadTrialStatus();
                 }}
               >
@@ -546,6 +557,8 @@ export default function SettingsScreen() {
                 style={styles.devBtn}
                 onPress={async () => {
                   await debugSetFirstLaunchDaysAgo(TRIAL_DAYS - 3);
+                  const status = await getTrialStatus();
+                  await scheduleTrialNotifications(status.firstLaunchAt);
                   await reloadTrialStatus();
                 }}
               >
@@ -557,11 +570,71 @@ export default function SettingsScreen() {
               style={styles.devBtn}
               onPress={async () => {
                 await debugSetFirstLaunchDaysAgo(0);
+                const status = await getTrialStatus();
+                await scheduleTrialNotifications(status.firstLaunchAt);
                 await reloadTrialStatus();
               }}
             >
               <Text style={styles.devBtnText}>初回起動日をリセット（今日から60日）</Text>
             </Pressable>
+
+            <Text style={[styles.devPanelTitle, styles.devPanelSubTitle]}>通知テスト</Text>
+            <Text style={styles.devPanelStatus}>
+              無料期間の予告通知は「残り7日／残り1日／当日」の3本を上のボタンで再スケジュールできます。日数を待たずに通知の見た目・許可ダイアログだけ確認したい場合は下のテスト通知を使ってください。
+            </Text>
+
+            <View style={styles.devBtnRow}>
+              <Pressable
+                style={styles.devBtn}
+                onPress={async () => {
+                  const ok = await sendTestNotification(5);
+                  Alert.alert(
+                    ok ? 'テスト通知を予約しました' : '通知の許可が下りていません',
+                    ok ? '5秒後に届きます。一度ホーム画面に戻るかロックしてみてください。' : '端末の通知設定でkoyomiの通知を許可してください。'
+                  );
+                }}
+              >
+                <Text style={styles.devBtnText}>5秒後にテスト通知</Text>
+              </Pressable>
+              <Pressable
+                style={styles.devBtn}
+                onPress={async () => {
+                  const ok = await sendTestNotification(30);
+                  Alert.alert(
+                    ok ? 'テスト通知を予約しました' : '通知の許可が下りていません',
+                    ok ? '30秒後に届きます。アプリをバックグラウンドにして待ってみてください。' : '端末の通知設定でkoyomiの通知を許可してください。'
+                  );
+                }}
+              >
+                <Text style={styles.devBtnText}>30秒後にテスト通知</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.devBtnRow}>
+              <Pressable
+                style={styles.devBtn}
+                onPress={async () => {
+                  const list = await listScheduledNotifications();
+                  if (list.length === 0) {
+                    Alert.alert('予約中の通知はありません', '');
+                    return;
+                  }
+                  const lines = list.map((n) => `・${n.content.title ?? '(無題)'}`).join('\n');
+                  Alert.alert(`予約中の通知（${list.length}件）`, lines);
+                }}
+              >
+                <Text style={styles.devBtnText}>予約状況を確認</Text>
+              </Pressable>
+              <Pressable
+                style={styles.devBtn}
+                onPress={async () => {
+                  await cancelTrialNotifications();
+                  Alert.alert('無料期間の予告通知をキャンセルしました', '');
+                }}
+              >
+                <Text style={styles.devBtnText}>予告通知をキャンセル</Text>
+              </Pressable>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -749,6 +822,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.l3Soft,
   },
   devPanelTitle: { color: colors.l3, fontSize: 12, fontWeight: '700', marginBottom: 8 },
+  devPanelSubTitle: { marginTop: 18, marginBottom: 6 },
   devPanelStatus: { color: colors.ink, fontSize: 13, marginBottom: 12 },
   devBtnRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   devBtn: {

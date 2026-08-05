@@ -19,6 +19,7 @@ const KEYS = {
   todos: 'koyomi:todos',
   firstLaunchAt: 'koyomi:firstLaunchAt',
   proUnlocked: 'koyomi:proUnlocked',
+  trialNotificationIds: 'koyomi:trialNotificationIds',
 } as const;
 
 export type CycleSettings = {
@@ -104,6 +105,11 @@ export const saveFirstLaunchAt = (v: string) => setJSON(KEYS.firstLaunchAt, v);
 // テスト用のデバッグ操作からのみtrueにできる。
 export const loadProUnlocked = () => getJSON(KEYS.proUnlocked, false as boolean);
 export const saveProUnlocked = (v: boolean) => setJSON(KEYS.proUnlocked, v);
+
+// 無料期間の予告通知として現在スケジュール中の通知ID一覧。
+// 再スケジュール時に「まず今の予約をキャンセルしてから新しく積み直す」ために使う。
+export const loadTrialNotificationIds = () => getJSON(KEYS.trialNotificationIds, [] as string[]);
+export const saveTrialNotificationIds = (v: string[]) => setJSON(KEYS.trialNotificationIds, v);
 
 // 「今、アルバムの中で一番新しい（＝ショートカットの『最新の写真』が拾う）のはどのレベルの
 // どの写真か」を覚えておくためのもの。ここが今回のリクエストと一致していれば、

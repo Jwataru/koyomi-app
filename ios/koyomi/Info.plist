@@ -27,8 +27,8 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>com.yourname.koyomi</string>
           <string>koyomi</string>
+          <string>com.yourname.koyomi</string>
         </array>
       </dict>
     </array>
@@ -52,7 +52,7 @@
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>koyomiが生成した壁紙を専用アルバムに保存するために使用します。</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your photos</string>
+    <string>koyomiが生成した壁紙を確認・保存するために使用します。</string>
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UILaunchStoryboardName</key>
