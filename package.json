@@ -7,7 +7,9 @@
     "start": "expo start",
     "ios": "expo run:ios",
     "android": "expo run:android",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "prebuild:ios": "expo prebuild --platform ios && node scripts/fix-entitlements.js",
+    "ios:clean": "rm -rf node_modules package-lock.json ios && npm install && npm run prebuild:ios && npx expo run:ios --device"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

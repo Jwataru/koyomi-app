@@ -37,7 +37,8 @@
         }
       ],
       "expo-notifications",
-      "expo-iap"
+      "expo-iap",
+      "./plugins/withoutPushEntitlement"
     ]
   }
 }
