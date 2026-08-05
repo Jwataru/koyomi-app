@@ -365,6 +365,21 @@ export default function SettingsScreen() {
       >
         <View style={styles.panel}>
           <Text style={styles.panelTitle}>ロック画面連携</Text>
+          {trialStatus?.trialExpired ? (
+            <View style={styles.trialExpiredBanner}>
+              <Text style={styles.trialExpiredBannerText}>
+                現在無料期間終了のためロック画面自動切り替えは行われません
+              </Text>
+              <Text style={styles.trialExpiredBannerSub}>
+                買い切り版を購入すると引き続きご利用いただけます。
+              </Text>
+            </View>
+          ) : (
+            trialStatus &&
+            !trialStatus.isPro && (
+              <Text style={styles.trialRemainingText}>無料期間 残り{trialStatus.daysRemaining}日</Text>
+            )
+          )}
           <View style={styles.launchRow}>
             <Text style={styles.launchText}>
               ロック画面へ自動反映するための設定手順を案内します。
@@ -404,73 +419,83 @@ export default function SettingsScreen() {
 
         <View style={styles.panel}>
           <Text style={styles.panelTitle}>設定画像</Text>
-          <View style={styles.photoGrid}>
-            {LEVEL_LIST.map((lvl) => {
-              const meta = photoMeta?.[lvl];
-              const info = LEVELS[lvl];
-              const isDragging = dragLevel === lvl;
-              const isHoverTarget = hoverLevel === lvl && dragLevel !== null && dragLevel !== lvl;
-              return (
-                <View key={lvl} style={styles.photoSlot}>
-                  <Animated.View
-                    ref={(r) => {
-                      slotRefs.current[lvl] = r as unknown as View | null;
-                    }}
-                    onLayout={() => measureSlot(lvl)}
-                    style={[
-                      styles.photoPreview,
-                      { aspectRatio: DEVICE_ASPECT },
-                      isHoverTarget && { borderColor: info.hex, borderWidth: 2 },
-                      isDragging && {
-                        transform: [
-                          { translateX: dragPos.x },
-                          { translateY: dragPos.y },
-                          { scale: 1.06 },
-                        ],
-                        zIndex: 10,
-                        elevation: 8,
-                      },
-                    ]}
-                  >
-                    <Pressable style={styles.photoPressable} onPress={() => pickPhoto(lvl)}>
-                      {meta?.uri ? (
-                        <Image source={{ uri: meta.uri }} resizeMode="cover" style={styles.photoImage} />
-                      ) : (
-                        <LevelIcon level={lvl} color={info.hex} size={48} />
+          {trialStatus?.trialExpired && (
+            <View style={styles.lockedBadgeRow}>
+              <Text style={styles.lockedBadgeText}>🔒 無料期間終了のため使用できません</Text>
+            </View>
+          )}
+          <View
+            style={trialStatus?.trialExpired ? styles.lockedContent : undefined}
+            pointerEvents={trialStatus?.trialExpired ? 'none' : 'auto'}
+          >
+            <View style={styles.photoGrid}>
+              {LEVEL_LIST.map((lvl) => {
+                const meta = photoMeta?.[lvl];
+                const info = LEVELS[lvl];
+                const isDragging = dragLevel === lvl;
+                const isHoverTarget = hoverLevel === lvl && dragLevel !== null && dragLevel !== lvl;
+                return (
+                  <View key={lvl} style={styles.photoSlot}>
+                    <Animated.View
+                      ref={(r) => {
+                        slotRefs.current[lvl] = r as unknown as View | null;
+                      }}
+                      onLayout={() => measureSlot(lvl)}
+                      style={[
+                        styles.photoPreview,
+                        { aspectRatio: DEVICE_ASPECT },
+                        isHoverTarget && { borderColor: info.hex, borderWidth: 2 },
+                        isDragging && {
+                          transform: [
+                            { translateX: dragPos.x },
+                            { translateY: dragPos.y },
+                            { scale: 1.06 },
+                          ],
+                          zIndex: 10,
+                          elevation: 8,
+                        },
+                      ]}
+                    >
+                      <Pressable style={styles.photoPressable} onPress={() => pickPhoto(lvl)}>
+                        {meta?.uri ? (
+                          <Image source={{ uri: meta.uri }} resizeMode="cover" style={styles.photoImage} />
+                        ) : (
+                          <LevelIcon level={lvl} color={info.hex} size={48} />
+                        )}
+                      </Pressable>
+                      {meta?.uri && (
+                        <View style={styles.gripHandle} {...panResponders[lvl]?.panHandlers}>
+                          <GripIcon />
+                        </View>
                       )}
-                    </Pressable>
+                    </Animated.View>
+                    <Text style={styles.photoLabel}>{info.name}</Text>
                     {meta?.uri && (
-                      <View style={styles.gripHandle} {...panResponders[lvl]?.panHandlers}>
-                        <GripIcon />
+                      <View style={styles.sliders}>
+                        <Pressable style={styles.readjustBtn} onPress={() => readjustPhoto(lvl)}>
+                          <Text style={styles.readjustBtnText}>位置を調整</Text>
+                        </Pressable>
                       </View>
                     )}
-                  </Animated.View>
-                  <Text style={styles.photoLabel}>{info.name}</Text>
-                  {meta?.uri && (
-                    <View style={styles.sliders}>
-                      <Pressable style={styles.readjustBtn} onPress={() => readjustPhoto(lvl)}>
-                        <Text style={styles.readjustBtnText}>位置を調整</Text>
-                      </Pressable>
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-          </View>
+                  </View>
+                );
+              })}
+            </View>
 
-          {Platform.OS === 'ios' && (
-            <Pressable
-              style={[styles.applyAllBtn, applyingNow && styles.updateBtnDisabled]}
-              onPress={applyNow}
-              disabled={applyingNow}
-            >
-              {applyingNow ? (
-                <ActivityIndicator color={colors.bgDeep} size="small" />
-              ) : (
-                <Text style={styles.applyAllBtnText}>すべての設定を反映</Text>
-              )}
-            </Pressable>
-          )}
+            {Platform.OS === 'ios' && (
+              <Pressable
+                style={[styles.applyAllBtn, applyingNow && styles.updateBtnDisabled]}
+                onPress={applyNow}
+                disabled={applyingNow}
+              >
+                {applyingNow ? (
+                  <ActivityIndicator color={colors.bgDeep} size="small" />
+                ) : (
+                  <Text style={styles.applyAllBtnText}>すべての設定を反映</Text>
+                )}
+              </Pressable>
+            )}
+          </View>
         </View>
 
         {__DEV__ && (
@@ -690,6 +715,29 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   applyAllBtnText: { color: colors.bgDeep, fontSize: 14, fontWeight: '700' },
+
+  trialExpiredBanner: {
+    backgroundColor: colors.l4Soft,
+    borderWidth: 1,
+    borderColor: colors.l4,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+  },
+  trialExpiredBannerText: { color: colors.l4, fontSize: 12, fontWeight: '700' },
+  trialExpiredBannerSub: { color: colors.inkMuted, fontSize: 11, marginTop: 4 },
+  trialRemainingText: { color: colors.inkMuted, fontSize: 11, marginBottom: 10 },
+
+  lockedBadgeRow: {
+    backgroundColor: colors.l4Soft,
+    borderWidth: 1,
+    borderColor: colors.l4,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+  },
+  lockedBadgeText: { color: colors.l4, fontSize: 12, fontWeight: '700' },
+  lockedContent: { opacity: 0.35 },
 
   devPanel: {
     marginTop: 28,

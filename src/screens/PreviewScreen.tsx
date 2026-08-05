@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { colors, LEVELS, LevelKey } from '../theme/theme';
 import { calcLevel, toDate } from '../logic/cycle';
 import { loadCycleSettings, loadPhotoMeta, CycleSettings, PhotoMetaMap } from '../data/storage';
+import { getTrialStatus, TrialStatus } from '../logic/trial';
 import LevelIcon from '../components/LevelIcon';
 
 const LEVEL_LIST: LevelKey[] = [1, 2, 3, 4];
@@ -31,10 +32,12 @@ export default function PreviewScreen() {
   const [cycle, setCycle] = useState<CycleSettings | null>(null);
   const [photoMeta, setPhotoMeta] = useState<PhotoMetaMap | null>(null);
   const [overrideLevel, setOverrideLevel] = useState<LevelKey | null>(null);
+  const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
 
   const reload = useCallback(async () => {
     setCycle(await loadCycleSettings());
     setPhotoMeta(await loadPhotoMeta());
+    setTrialStatus(await getTrialStatus());
   }, []);
 
   useFocusEffect(
@@ -66,50 +69,65 @@ export default function PreviewScreen() {
     </View>
   );
 
+  const locked = !!trialStatus?.trialExpired;
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.wrap}>
-        <View style={styles.phoneShell}>
-          <View style={styles.phoneScreen}>
-            {photo?.uri ? (
-              <View style={StyleSheet.absoluteFill}>
-                <Image source={{ uri: photo.uri }} resizeMode="cover" style={StyleSheet.absoluteFill} />
-                <View style={StyleSheet.absoluteFill}>{content}</View>
-              </View>
-            ) : (
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: info.soft }]}>
-                {content}
-              </View>
-            )}
-            <View style={styles.notch} />
-          </View>
-        </View>
-
-        <Text style={styles.caption}>
-          現在のレベル：<Text style={{ color: info.hex }}>レベル{level}・{info.name}</Text>
-          {overrideLevel === null ? '（本日の自動判定）' : '（プレビュー中）'}
-        </Text>
-
-        <View style={styles.switcher}>
-          <Pressable
-            style={[styles.switchBtn, overrideLevel === null && styles.switchBtnActive]}
-            onPress={() => setOverrideLevel(null)}
-          >
-            <Text style={[styles.switchText, overrideLevel === null && styles.switchTextActive]}>
-              自動（本日）
+        {locked && (
+          <View style={styles.lockedBanner}>
+            <Text style={styles.lockedBannerText}>
+              🔒 無料期間終了のためロック画面には反映されません
             </Text>
-          </Pressable>
-          {LEVEL_LIST.map((lvl) => (
+            <Text style={styles.lockedBannerSub}>
+              ここでの見た目確認は引き続き行えますが、実際のロック画面への保存・自動切り替えは停止中です。
+            </Text>
+          </View>
+        )}
+
+        <View style={locked ? styles.dimmed : undefined} pointerEvents={locked ? 'none' : 'auto'}>
+          <View style={styles.phoneShell}>
+            <View style={styles.phoneScreen}>
+              {photo?.uri ? (
+                <View style={StyleSheet.absoluteFill}>
+                  <Image source={{ uri: photo.uri }} resizeMode="cover" style={StyleSheet.absoluteFill} />
+                  <View style={StyleSheet.absoluteFill}>{content}</View>
+                </View>
+              ) : (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: info.soft }]}>
+                  {content}
+                </View>
+              )}
+              <View style={styles.notch} />
+            </View>
+          </View>
+
+          <Text style={styles.caption}>
+            現在のレベル：<Text style={{ color: info.hex }}>レベル{level}・{info.name}</Text>
+            {overrideLevel === null ? '（本日の自動判定）' : '（プレビュー中）'}
+          </Text>
+
+          <View style={styles.switcher}>
             <Pressable
-              key={lvl}
-              style={[styles.switchBtn, overrideLevel === lvl && styles.switchBtnActive]}
-              onPress={() => setOverrideLevel(lvl)}
+              style={[styles.switchBtn, overrideLevel === null && styles.switchBtnActive]}
+              onPress={() => setOverrideLevel(null)}
             >
-              <Text style={[styles.switchText, overrideLevel === lvl && styles.switchTextActive]}>
-                Lv{lvl}
+              <Text style={[styles.switchText, overrideLevel === null && styles.switchTextActive]}>
+                自動（本日）
               </Text>
             </Pressable>
-          ))}
+            {LEVEL_LIST.map((lvl) => (
+              <Pressable
+                key={lvl}
+                style={[styles.switchBtn, overrideLevel === lvl && styles.switchBtnActive]}
+                onPress={() => setOverrideLevel(lvl)}
+              >
+                <Text style={[styles.switchText, overrideLevel === lvl && styles.switchTextActive]}>
+                  Lv{lvl}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         <Text style={styles.saveHint}>
@@ -123,6 +141,19 @@ export default function PreviewScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bgDeep },
   wrap: { flex: 1, alignItems: 'center', paddingTop: 24 },
+  lockedBanner: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: colors.l4Soft,
+    borderWidth: 1,
+    borderColor: colors.l4,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 18,
+  },
+  lockedBannerText: { color: colors.l4, fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  lockedBannerSub: { color: colors.inkMuted, fontSize: 11, marginTop: 4, textAlign: 'center', lineHeight: 16 },
+  dimmed: { opacity: 0.35, alignItems: 'center' },
   phoneShell: {
     width: PHONE_SHELL_WIDTH,
     height: PHONE_SHELL_HEIGHT,
