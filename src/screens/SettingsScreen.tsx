@@ -40,6 +40,13 @@ import {
   PhotoMetaMap,
   WallpaperSavedMap,
 } from '../data/storage';
+import {
+  getTrialStatus,
+  debugSetProUnlocked,
+  debugSetFirstLaunchDaysAgo,
+  TrialStatus,
+  TRIAL_DAYS,
+} from '../logic/trial';
 
 // 実機の壁紙生成キャンバス（wallpaperEngine）はこの画面サイズをそのまま使う。
 // 設定画面のプレビュー枠・プレビュー画面（PreviewScreen）・実際の壁紙出力の
@@ -98,6 +105,11 @@ export default function SettingsScreen() {
   // 切り抜きモーダルに渡す「どのレベルの、どの画像を切り抜いているか」
   const [cropTarget, setCropTarget] = useState<{ level: LevelKey; uri: string } | null>(null);
   const [applyingNow, setApplyingNow] = useState(false);
+  const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
+
+  const reloadTrialStatus = async () => {
+    setTrialStatus(await getTrialStatus());
+  };
 
   useEffect(() => {
     (async () => {
@@ -106,6 +118,7 @@ export default function SettingsScreen() {
       setCycleLen(String(c.cycleLen));
       setPhotoMeta(await loadPhotoMeta());
       setSavedMap(await loadWallpaperSaved());
+      await reloadTrialStatus();
     })();
   }, []);
 
@@ -459,6 +472,73 @@ export default function SettingsScreen() {
             </Pressable>
           )}
         </View>
+
+        {__DEV__ && (
+          <View style={styles.devPanel}>
+            <Text style={styles.devPanelTitle}>開発用テストパネル（__DEV__のみ表示）</Text>
+            <Text style={styles.devPanelStatus}>
+              {trialStatus
+                ? trialStatus.isPro
+                  ? '状態: 購入済み（プロ版）'
+                  : trialStatus.trialExpired
+                  ? `状態: 無料期間終了（起動から${trialStatus.daysElapsed}日経過 / 全${TRIAL_DAYS}日）`
+                  : `状態: 無料期間中（残り${trialStatus.daysRemaining}日 / 全${TRIAL_DAYS}日）`
+                : '読み込み中...'}
+            </Text>
+
+            <View style={styles.devBtnRow}>
+              <Pressable
+                style={styles.devBtn}
+                onPress={async () => {
+                  await debugSetProUnlocked(true);
+                  await reloadTrialStatus();
+                }}
+              >
+                <Text style={styles.devBtnText}>プロ版として試す</Text>
+              </Pressable>
+              <Pressable
+                style={styles.devBtn}
+                onPress={async () => {
+                  await debugSetProUnlocked(false);
+                  await reloadTrialStatus();
+                }}
+              >
+                <Text style={styles.devBtnText}>無料版に戻す</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.devBtnRow}>
+              <Pressable
+                style={styles.devBtn}
+                onPress={async () => {
+                  await debugSetFirstLaunchDaysAgo(TRIAL_DAYS + 5);
+                  await reloadTrialStatus();
+                }}
+              >
+                <Text style={styles.devBtnText}>無料期間を終了させる</Text>
+              </Pressable>
+              <Pressable
+                style={styles.devBtn}
+                onPress={async () => {
+                  await debugSetFirstLaunchDaysAgo(TRIAL_DAYS - 3);
+                  await reloadTrialStatus();
+                }}
+              >
+                <Text style={styles.devBtnText}>残り3日にする</Text>
+              </Pressable>
+            </View>
+
+            <Pressable
+              style={styles.devBtn}
+              onPress={async () => {
+                await debugSetFirstLaunchDaysAgo(0);
+                await reloadTrialStatus();
+              }}
+            >
+              <Text style={styles.devBtnText}>初回起動日をリセット（今日から60日）</Text>
+            </Pressable>
+          </View>
+        )}
       </ScrollView>
 
       {/* 日付ピッカー */}
@@ -610,6 +690,29 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   applyAllBtnText: { color: colors.bgDeep, fontSize: 14, fontWeight: '700' },
+
+  devPanel: {
+    marginTop: 28,
+    marginHorizontal: 20,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.l3,
+    backgroundColor: colors.l3Soft,
+  },
+  devPanelTitle: { color: colors.l3, fontSize: 12, fontWeight: '700', marginBottom: 8 },
+  devPanelStatus: { color: colors.ink, fontSize: 13, marginBottom: 12 },
+  devBtnRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  devBtn: {
+    flex: 1,
+    backgroundColor: colors.bgPanel2,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  devBtnText: { color: colors.ink, fontSize: 12, fontWeight: '600' },
   pickerOverlay: {
     flex: 1,
     backgroundColor: 'rgba(8,10,14,0.6)',

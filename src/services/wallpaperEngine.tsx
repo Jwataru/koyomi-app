@@ -19,6 +19,7 @@ import {
   saveWallpaperLastApplied,
 } from '../data/storage';
 import { calcLevel, toDate } from '../logic/cycle';
+import { getTrialStatus } from '../logic/trial';
 
 export const WALLPAPER_ALBUM_NAME = 'koyomi壁紙';
 
@@ -86,6 +87,18 @@ export default function WallpaperEngine() {
   useEffect(() => {
     _requestSave = async (forcedLevel?: LevelKey): Promise<WallpaperSaveResult> => {
       try {
+        // ロック画面自動連携は無料期間（60日）限定の機能。期限切れかつ未購入なら、
+        // 壁紙生成・アルバム保存に進む前にここで止める。
+        // ※ 今日・カレンダー・TODOなど他の画面はこのチェックを通らないため、期限後も引き続き使える。
+        const trial = await getTrialStatus();
+        if (trial.trialExpired) {
+          return {
+            success: false,
+            message:
+              '無料期間（60日間）が終了したため、ロック画面の自動連携は停止しています。設定画面から購入すると再開できます。',
+          };
+        }
+
         const [cycle, photoMeta] = await Promise.all([loadCycleSettings(), loadPhotoMeta()]);
         const autoLevel: LevelKey = cycle?.nextPeriodDate
           ? calcLevel(new Date(), toDate(cycle.nextPeriodDate), cycle.cycleLen)

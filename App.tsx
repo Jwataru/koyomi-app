@@ -13,6 +13,7 @@ import PreviewScreen from './src/screens/PreviewScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import { colors } from './src/theme/theme';
 import WallpaperEngine, { requestWallpaperSave } from './src/services/wallpaperEngine';
+import { ensureFirstLaunchRecorded } from './src/logic/trial';
 
 const Tab = createBottomTabNavigator();
 const RootStack = createNativeStackNavigator();
@@ -64,6 +65,9 @@ function handleDeepLink(url: string | null) {
 
 export default function App() {
   useEffect(() => {
+    // 無料期間（60日）の起算日を記録する。すでに記録済みなら何もしない。
+    ensureFirstLaunchRecorded();
+
     Linking.getInitialURL().then(handleDeepLink);
     const sub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
     return () => sub.remove();

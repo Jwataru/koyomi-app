@@ -17,6 +17,8 @@ const KEYS = {
   wallpaperSaved: 'koyomi:wallpaperSaved',
   wallpaperLastApplied: 'koyomi:wallpaperLastApplied',
   todos: 'koyomi:todos',
+  firstLaunchAt: 'koyomi:firstLaunchAt',
+  proUnlocked: 'koyomi:proUnlocked',
 } as const;
 
 export type CycleSettings = {
@@ -93,6 +95,15 @@ export const saveWallpaperSaved = (v: WallpaperSavedMap) => setJSON(KEYS.wallpap
 
 export const loadTodos = () => getJSON(KEYS.todos, [] as TodoItem[]);
 export const saveTodos = (v: TodoItem[]) => setJSON(KEYS.todos, v);
+
+// 無料期間の起算日（ISO文字列）。アプリの初回起動時に一度だけ書き込む。
+export const loadFirstLaunchAt = () => getJSON(KEYS.firstLaunchAt, null as string | null);
+export const saveFirstLaunchAt = (v: string) => setJSON(KEYS.firstLaunchAt, v);
+
+// 買い切り版を購入済みかどうか。実際の課金処理は未実装のため、現状は常にfalseで、
+// テスト用のデバッグ操作からのみtrueにできる。
+export const loadProUnlocked = () => getJSON(KEYS.proUnlocked, false as boolean);
+export const saveProUnlocked = (v: boolean) => setJSON(KEYS.proUnlocked, v);
 
 // 「今、アルバムの中で一番新しい（＝ショートカットの『最新の写真』が拾う）のはどのレベルの
 // どの写真か」を覚えておくためのもの。ここが今回のリクエストと一致していれば、
