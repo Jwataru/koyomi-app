@@ -38,7 +38,7 @@ export function usePurchasePro(options?: { onUnlocked?: () => void }) {
   // 接続できたら商品情報（価格表示など）を取得しておく。
   useEffect(() => {
     if (connected && fetchProductsFn) {
-      fetchProductsFn({ skus: [PRO_PRODUCT_ID], type: 'inapp' });
+      fetchProductsFn({ skus: [PRO_PRODUCT_ID], type: 'in-app' });
     }
   }, [connected, fetchProductsFn]);
 
@@ -61,7 +61,15 @@ export function usePurchasePro(options?: { onUnlocked?: () => void }) {
 
   const buyPro = useCallback(async () => {
     if (!requestPurchaseFn) throw new Error('購入機能が利用できません（expo-iapのAPIが見つかりません）。');
-    await requestPurchaseFn({ request: { sku: PRO_PRODUCT_ID, skus: [PRO_PRODUCT_ID] }, type: 'inapp' });
+    // iOS/Androidでリクエストの形が異なる（OpenIAP仕様）。
+    // apple.sku は単一の文字列、google.skus は配列を渡す。
+    await requestPurchaseFn({
+      request: {
+        apple: { sku: PRO_PRODUCT_ID },
+        google: { skus: [PRO_PRODUCT_ID] },
+      },
+      type: 'in-app',
+    });
   }, [requestPurchaseFn]);
 
   // 「購入を復元」ボタン用。機種変更・再インストール後に必須（Appleの審査要件でもある）。
