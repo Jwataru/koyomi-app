@@ -8,7 +8,7 @@
 //   先にキャンセルしてから新しく積み直す（IDはAsyncStorageに覚えておく）。
 import * as Notifications from 'expo-notifications';
 import { loadTrialNotificationIds, saveTrialNotificationIds } from '../data/storage';
-import { TRIAL_DAYS } from './trial';
+import { TRIAL_DAYS } from '../logic/trial';
 
 const DAY_MS = 1000 * 60 * 60 * 24;
 
