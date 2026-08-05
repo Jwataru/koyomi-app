@@ -24,6 +24,7 @@ import {
   TodoItem,
 } from '../data/storage';
 import LevelIcon from '../components/LevelIcon';
+import { getTrialStatus, TrialStatus } from '../logic/trial';
 
 function makeTodoId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -46,12 +47,19 @@ export default function TodayScreen() {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [newTodoText, setNewTodoText] = useState('');
   const [checkedModalVisible, setCheckedModalVisible] = useState(false);
+  const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
 
   const reload = useCallback(async () => {
-    const [c, p, t] = await Promise.all([loadCycleSettings(), loadPhotoMeta(), loadTodos()]);
+    const [c, p, t, trial] = await Promise.all([
+      loadCycleSettings(),
+      loadPhotoMeta(),
+      loadTodos(),
+      getTrialStatus(),
+    ]);
     setCycle(c);
     setPhotoMeta(p);
     setTodos(t);
+    setTrialStatus(trial);
   }, []);
 
   // 設定画面で値を変えて戻ってきたときに再読み込みする
@@ -128,6 +136,28 @@ export default function TodayScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
+        {trialStatus?.trialExpired ? (
+          <View style={styles.trialExpiredBanner}>
+            <Text style={styles.trialExpiredBannerText}>
+              🔒 無料期間終了のためロック画面自動切り替えは行われません
+            </Text>
+            <Text style={styles.trialExpiredBannerSub}>
+              買い切り版を購入すると引き続きご利用いただけます。「設定」タブから購入できます。
+            </Text>
+          </View>
+        ) : (
+          trialStatus?.showWarning && (
+            <View style={styles.trialWarningBanner}>
+              <Text style={styles.trialWarningBannerText}>
+                ⏰ あと{trialStatus.daysRemaining}日で無料期間が終了します
+              </Text>
+              <Text style={styles.trialWarningBannerSub}>
+                終了後はロック画面の自動切り替えが停止します。
+              </Text>
+            </View>
+          )
+        )}
+
         <Text style={styles.heading}>今日のステータス</Text>
         <View style={styles.card}>
           <View style={[styles.iconWrap, { backgroundColor: info.soft }]}>
@@ -302,6 +332,28 @@ const styles = StyleSheet.create({
   },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   legendText: { color: colors.inkMuted, fontSize: 11 },
+
+  trialExpiredBanner: {
+    backgroundColor: colors.l4Soft,
+    borderWidth: 1,
+    borderColor: colors.l4,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 20,
+  },
+  trialExpiredBannerText: { color: colors.l4, fontSize: 12, fontWeight: '700' },
+  trialExpiredBannerSub: { color: colors.inkMuted, fontSize: 11, marginTop: 4, lineHeight: 16 },
+
+  trialWarningBanner: {
+    backgroundColor: colors.l3Soft,
+    borderWidth: 1,
+    borderColor: colors.l3,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 20,
+  },
+  trialWarningBannerText: { color: colors.l3, fontSize: 12, fontWeight: '700' },
+  trialWarningBannerSub: { color: colors.inkMuted, fontSize: 11, marginTop: 4, lineHeight: 16 },
 
   todoSection: {
     marginTop: 24,
