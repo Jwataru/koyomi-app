@@ -85,7 +85,7 @@ export default function PreviewScreen() {
           </View>
         )}
 
-        <View style={locked ? styles.dimmed : undefined} pointerEvents={locked ? 'none' : 'auto'}>
+        <View style={[styles.previewInner, locked && styles.dimmed]} pointerEvents={locked ? 'none' : 'auto'}>
           <View style={styles.phoneShell}>
             <View style={styles.phoneScreen}>
               {photo?.uri ? (
@@ -153,7 +153,8 @@ const styles = StyleSheet.create({
   },
   lockedBannerText: { color: colors.l4, fontSize: 12, fontWeight: '700', textAlign: 'center' },
   lockedBannerSub: { color: colors.inkMuted, fontSize: 11, marginTop: 4, textAlign: 'center', lineHeight: 16 },
-  dimmed: { opacity: 0.35, alignItems: 'center' },
+  previewInner: { alignItems: 'center' },
+  dimmed: { opacity: 0.35 },
   phoneShell: {
     width: PHONE_SHELL_WIDTH,
     height: PHONE_SHELL_HEIGHT,
