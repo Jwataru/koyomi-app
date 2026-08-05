@@ -60,7 +60,7 @@
             ReferencedContainer = "container:koyomi.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <StoreKitConfigurationFileReference
+         <StoreKitConfigurationFileReference
          identifier = "koyomi.storekit">
       </StoreKitConfigurationFileReference>
    </LaunchAction>

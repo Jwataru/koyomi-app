@@ -38,7 +38,8 @@
       ],
       "expo-notifications",
       "expo-iap",
-      "./plugins/withoutPushEntitlement"
+      "./plugins/withoutPushEntitlement",
+      "./plugins/withStoreKitConfig"
     ]
   }
 }
