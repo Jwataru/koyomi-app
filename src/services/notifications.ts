@@ -39,6 +39,25 @@ async function scheduleAt(date: Date, title: string, body: string): Promise<stri
   });
 }
 
+export type TrialNotificationKind = 'sevenDaysBefore' | 'oneDayBefore' | 'onExpiry';
+
+// 「残り7日」「残り1日」「当日」の3通知の中身。実際のスケジュール登録と、下のテスト送信の
+// 両方から参照する（内容がズレないように一箇所にまとめている）。
+const TRIAL_NOTIFICATION_CONTENT: Record<TrialNotificationKind, { title: string; body: string }> = {
+  sevenDaysBefore: {
+    title: 'koyomiの無料期間があと7日で終了します',
+    body: '終了後はロック画面の自動切り替えが停止します。「設定」タブから買い切り版に切り替えられます。',
+  },
+  oneDayBefore: {
+    title: 'koyomiの無料期間は明日までです',
+    body: '明日を過ぎるとロック画面の自動切り替えが停止します。',
+  },
+  onExpiry: {
+    title: 'koyomiの無料期間が終了しました',
+    body: 'ロック画面の自動切り替えが停止しています。「設定」タブから買い切り版に切り替えるとすぐに再開できます。',
+  },
+};
+
 /**
  * 無料期間の起算日（firstLaunchAt）をもとに、「残り7日」「残り1日」「当日」の
  * 3通知を（再）スケジュールする。すでに予約済みの分があれば先にキャンセルする。
@@ -55,22 +74,22 @@ export async function scheduleTrialNotifications(firstLaunchAt: string): Promise
 
   const sevenDaysBefore = await scheduleAt(
     new Date(base + (TRIAL_DAYS - 7) * DAY_MS),
-    'koyomiの無料期間があと7日で終了します',
-    '終了後はロック画面の自動切り替えが停止します。「設定」タブから買い切り版に切り替えられます。'
+    TRIAL_NOTIFICATION_CONTENT.sevenDaysBefore.title,
+    TRIAL_NOTIFICATION_CONTENT.sevenDaysBefore.body
   );
   if (sevenDaysBefore) ids.push(sevenDaysBefore);
 
   const oneDayBefore = await scheduleAt(
     new Date(base + (TRIAL_DAYS - 1) * DAY_MS),
-    'koyomiの無料期間は明日までです',
-    '明日を過ぎるとロック画面の自動切り替えが停止します。'
+    TRIAL_NOTIFICATION_CONTENT.oneDayBefore.title,
+    TRIAL_NOTIFICATION_CONTENT.oneDayBefore.body
   );
   if (oneDayBefore) ids.push(oneDayBefore);
 
   const onExpiry = await scheduleAt(
     new Date(base + TRIAL_DAYS * DAY_MS),
-    'koyomiの無料期間が終了しました',
-    'ロック画面の自動切り替えが停止しています。「設定」タブから買い切り版に切り替えるとすぐに再開できます。'
+    TRIAL_NOTIFICATION_CONTENT.onExpiry.title,
+    TRIAL_NOTIFICATION_CONTENT.onExpiry.body
   );
   if (onExpiry) ids.push(onExpiry);
 
@@ -100,6 +119,22 @@ export async function sendTestNotification(afterSeconds = 5): Promise<boolean> {
       body: `${afterSeconds}秒後に届くように予約したテスト通知です。`,
       sound: true,
     },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: afterSeconds, repeats: false },
+  });
+  return true;
+}
+
+/**
+ * 「残り7日」「残り1日」「当日」いずれかの通知を、実際の文面のまま指定秒後に1件送る。
+ * 本番のトライアル通知（IDの記録・上書き管理）とは独立しており、気軽に何度でも撃てる。
+ * 通知の許可が下りていない場合はfalseを返す。
+ */
+export async function sendTestTrialNotification(kind: TrialNotificationKind, afterSeconds = 5): Promise<boolean> {
+  const granted = await requestNotificationPermission();
+  if (!granted) return false;
+  const { title, body } = TRIAL_NOTIFICATION_CONTENT[kind];
+  await Notifications.scheduleNotificationAsync({
+    content: { title, body, sound: true },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: afterSeconds, repeats: false },
   });
   return true;

@@ -51,6 +51,7 @@ import {
   scheduleTrialNotifications,
   cancelTrialNotifications,
   sendTestNotification,
+  sendTestTrialNotification,
   listScheduledNotifications,
 } from '../services/notifications';
 
@@ -580,8 +581,50 @@ export default function SettingsScreen() {
 
             <Text style={[styles.devPanelTitle, styles.devPanelSubTitle]}>通知テスト</Text>
             <Text style={styles.devPanelStatus}>
-              無料期間の予告通知は「残り7日／残り1日／当日」の3本を上のボタンで再スケジュールできます。日数を待たずに通知の見た目・許可ダイアログだけ確認したい場合は下のテスト通知を使ってください。
+              下のボタンで、それぞれの通知の文面を5秒後に実際に届けて確認できます。
             </Text>
+
+            <View style={styles.devBtnRow}>
+              <Pressable
+                style={styles.devBtn}
+                onPress={async () => {
+                  const ok = await sendTestTrialNotification('sevenDaysBefore', 5);
+                  Alert.alert(
+                    ok ? 'テスト通知を予約しました' : '通知の許可が下りていません',
+                    ok ? '5秒後に「残り7日」通知が届きます。' : '端末の通知設定でkoyomiの通知を許可してください。'
+                  );
+                }}
+              >
+                <Text style={styles.devBtnText}>残り7日をテスト</Text>
+              </Pressable>
+              <Pressable
+                style={styles.devBtn}
+                onPress={async () => {
+                  const ok = await sendTestTrialNotification('oneDayBefore', 5);
+                  Alert.alert(
+                    ok ? 'テスト通知を予約しました' : '通知の許可が下りていません',
+                    ok ? '5秒後に「残り1日」通知が届きます。' : '端末の通知設定でkoyomiの通知を許可してください。'
+                  );
+                }}
+              >
+                <Text style={styles.devBtnText}>残り1日をテスト</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.devBtnRow}>
+              <Pressable
+                style={styles.devBtn}
+                onPress={async () => {
+                  const ok = await sendTestTrialNotification('onExpiry', 5);
+                  Alert.alert(
+                    ok ? 'テスト通知を予約しました' : '通知の許可が下りていません',
+                    ok ? '5秒後に「当日」通知が届きます。' : '端末の通知設定でkoyomiの通知を許可してください。'
+                  );
+                }}
+              >
+                <Text style={styles.devBtnText}>当日をテスト</Text>
+              </Pressable>
+            </View>
 
             <View style={styles.devBtnRow}>
               <Pressable
