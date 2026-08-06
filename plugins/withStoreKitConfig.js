@@ -47,16 +47,24 @@ function withStoreKitConfig(config) {
         return config;
       }
 
+      // identifier は「.xcscheme ファイル自身」から見た相対パス。
+      // xcschemes/ -> xcshareddata/ -> *.xcodeproj/ -> ios/ の3階層上が
+      // koyomi.storekit の置き場所になる。
+      const relativeIdentifier = `../../../${STOREKIT_FILENAME}`;
+
       let scheme = fs.readFileSync(schemePath, 'utf8');
-      if (!scheme.includes('StoreKitConfigurationFileReference')) {
-        const insertion =
-          `      <StoreKitConfigurationFileReference\n` +
-          `         identifier = "${STOREKIT_FILENAME}">\n` +
-          `      </StoreKitConfigurationFileReference>\n` +
-          `   </LaunchAction>`;
-        scheme = scheme.replace('</LaunchAction>', insertion);
-        fs.writeFileSync(schemePath, scheme, 'utf8');
-      }
+      // 既存の（誤った）参照が入っていたら一旦除去してから正しい内容で入れ直す
+      scheme = scheme.replace(
+        /\s*<StoreKitConfigurationFileReference[\s\S]*?<\/StoreKitConfigurationFileReference>/,
+        ''
+      );
+      const insertion =
+        `      <StoreKitConfigurationFileReference\n` +
+        `         identifier = "${relativeIdentifier}">\n` +
+        `      </StoreKitConfigurationFileReference>\n` +
+        `   </LaunchAction>`;
+      scheme = scheme.replace('</LaunchAction>', insertion);
+      fs.writeFileSync(schemePath, scheme, 'utf8');
 
       return config;
     },

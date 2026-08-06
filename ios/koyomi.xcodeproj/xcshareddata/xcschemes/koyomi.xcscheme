@@ -61,7 +61,7 @@
          </BuildableReference>
       </BuildableProductRunnable>
          <StoreKitConfigurationFileReference
-         identifier = "koyomi.storekit">
+         identifier = "../../../koyomi.storekit">
       </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
