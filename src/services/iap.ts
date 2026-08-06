@@ -20,7 +20,14 @@ export const PRO_PRODUCT_ID = 'com.yourname.koyomi.pro';
 
 export function usePurchasePro(options?: { onUnlocked?: () => void }) {
   // 型定義がバージョンでブレるため any で受け、使うものだけ都度取り出す。
-  const iap = useIAP() as any;
+  // onError: fetchProducts等の失敗を握りつぶさずログに出す（¥ー表示のまま原因不明になるのを防ぐ）。
+  const iap = useIAP({
+    onError: (error) => {
+      if (__DEV__) {
+        console.warn('[iap] エラー:', error?.message ?? error);
+      }
+    },
+  }) as any;
   const {
     connected,
     products = [],
@@ -38,9 +45,28 @@ export function usePurchasePro(options?: { onUnlocked?: () => void }) {
   // 接続できたら商品情報（価格表示など）を取得しておく。
   useEffect(() => {
     if (connected && fetchProductsFn) {
-      fetchProductsFn({ skus: [PRO_PRODUCT_ID], type: 'in-app' });
+      fetchProductsFn({ skus: [PRO_PRODUCT_ID], type: 'in-app' }).catch((e: any) => {
+        if (__DEV__) {
+          console.warn('[iap] 商品情報の取得に失敗しました:', e?.message ?? e);
+        }
+      });
     }
   }, [connected, fetchProductsFn]);
+
+  // 接続はできたのに商品が1件も取得できない＝典型的には
+  //「StoreKit Configuration が実機/シミュレータに反映されていない」状態（README参照）。
+  // 開発時に気づけるよう warn を出す（本番では何もしない）。
+  useEffect(() => {
+    if (__DEV__ && connected && products.length === 0) {
+      console.warn(
+        '[iap] connected=true ですが products が空です。' +
+          ' Xcodeで ios/koyomi.xcworkspace を開き、Product > Scheme > Edit Scheme > Run > Options の' +
+          ' 「StoreKit Configuration」が koyomi.storekit になっているか、' +
+          ' 一度Xcodeから直接Run（Cmd+R）したかを確認してください' +
+          '（`expo run:ios` 等CLI経由の起動だとStoreKit設定が反映されないことがあります）。'
+      );
+    }
+  }, [connected, products.length]);
 
   // 購入成立時の後処理（初回購入・復元どちらの経路でも呼ばれる）。
   const grantPro = useCallback(
@@ -59,8 +85,19 @@ export function usePurchasePro(options?: { onUnlocked?: () => void }) {
     }
   }, [currentPurchase, grantPro]);
 
+  const proProduct = products.find((p: any) => p.id === PRO_PRODUCT_ID);
+
   const buyPro = useCallback(async () => {
     if (!requestPurchaseFn) throw new Error('購入機能が利用できません（expo-iapのAPIが見つかりません）。');
+    // products にまだ載っていない商品を購入しようとすると、ネイティブ側は
+    // 「SKU not found」という分かりにくいエラーを返す。ここで先に検知して、
+    // 原因（StoreKit Configurationが反映されていない等）が分かるメッセージに変える。
+    if (!proProduct) {
+      throw new Error(
+        '商品情報を取得できていません。StoreKit Configuration（koyomi.storekit）が' +
+          '有効な状態でビルドされているか確認してください。'
+      );
+    }
     // iOS/Androidでリクエストの形が異なる（OpenIAP仕様）。
     // apple.sku は単一の文字列、google.skus は配列を渡す。
     await requestPurchaseFn({
@@ -70,7 +107,7 @@ export function usePurchasePro(options?: { onUnlocked?: () => void }) {
       },
       type: 'in-app',
     });
-  }, [requestPurchaseFn]);
+  }, [requestPurchaseFn, proProduct]);
 
   // 「購入を復元」ボタン用。機種変更・再インストール後に必須（Appleの審査要件でもある）。
   const restorePro = useCallback(async () => {
@@ -84,8 +121,6 @@ export function usePurchasePro(options?: { onUnlocked?: () => void }) {
       void grantPro(restored);
     }
   }, [availablePurchases, grantPro]);
-
-  const proProduct = products.find((p: any) => p.id === PRO_PRODUCT_ID);
 
   return {
     connected,
