@@ -18,7 +18,7 @@
 // （`currentPurchase` を監視するコードのままだと、ネイティブの購入自体は
 // 成功してもアプリ側は永遠に気づけない、という不具合になるので要注意）
 import { useCallback, useEffect, useState } from 'react';
-import { useIAP, getAvailablePurchases, type Purchase } from 'expo-iap';
+import { useIAP, getAvailablePurchases, restorePurchases, type Purchase } from 'expo-iap';
 import { saveProUnlocked } from '../data/storage';
 import { cancelTrialNotifications } from './notifications';
 
@@ -129,10 +129,14 @@ export function usePurchasePro(options?: { onUnlocked?: () => void }) {
   // 「購入を復元」ボタン用。機種変更・再インストール後に必須（Appleの審査要件でもある）。
   // フック経由の availablePurchases（下のuseEffect）は接続時に裏で非同期更新されるだけで、
   // 「ボタンを押した瞬間の結果」を判定するのには向かない。
-  // ここでは expo-iap がフックとは別に提供している、直接呼び出せる
-  // getAvailablePurchases()（Promiseで購入一覧を直接返す）を使い、
-  // 「実際に復元できたかどうか」を呼び出し元（画面側）に boolean で返せるようにする。
+  //
+  // 【重要】getAvailablePurchases() だけを呼ぶと、finishTransaction 済みの
+  // （＝正常に購入処理が完了した）過去の非消耗型アイテムを拾えないことがある。
+  // restorePurchases()（iOS側では App Store との同期を行ってから
+  // getAvailablePurchases 相当の内容を反映する）を先に呼んでおくことで、
+  // 過去に購入・finish済みのアイテムも確実に一覧へ反映させてから取得する。
   const restorePro = useCallback(async (): Promise<boolean> => {
+    await restorePurchases();
     const purchases = await getAvailablePurchases();
     const restored = purchases.find((p) => p.productId === PRO_PRODUCT_ID);
     if (restored) {
