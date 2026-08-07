@@ -61,7 +61,7 @@
          </BuildableReference>
       </BuildableProductRunnable>
          <StoreKitConfigurationFileReference
-         identifier = "../../../koyomi.storekit">
+         identifier = "/Users/jibikiwataru/Downloads/koyomi-app/ios/koyomi.storekit">
       </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
