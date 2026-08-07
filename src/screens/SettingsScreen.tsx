@@ -148,8 +148,12 @@ export default function SettingsScreen() {
   const handleRestorePro = async () => {
     setIsBuyingPro(true);
     try {
-      await restorePro();
-      Alert.alert('確認しました', '購入済みの場合、自動的にPro版が有効になります。');
+      const restored = await restorePro();
+      if (restored) {
+        Alert.alert('復元しました', '過去の購入情報が見つかったため、Pro版に切り替えました。');
+      } else {
+        Alert.alert('購入情報が見つかりません', 'この商品はまだ購入されていません。');
+      }
     } catch (e: any) {
       Alert.alert('復元できませんでした', e?.message ?? 'しばらくしてからもう一度お試しください。');
     } finally {
