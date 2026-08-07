@@ -1,14 +1,21 @@
 // `expo run:ios` は毎回内部で `expo prebuild` を走らせて ios/ を作り直すため、
 // Xcode上で手動設定した「StoreKit Configuration」（Product > Scheme > Edit Scheme）は
-// 次のビルドで消えてしまう（ios/koyomi.storekit ごと削除され、
-// koyomi.xcscheme の LaunchAction も生成テンプレートに戻る）。
+// 次のビルドで消えてしまう（ios/koyomi.storekit ごと削除される）。
 //
 // このプラグインは prebuild の一部として、
-//   1. plugins/koyomi.storekit（＝正本。ios/配下ではないので消えない）を
-//      生成後の ios/koyomi.storekit へコピー
-//   2. 生成された Debug スキーム（ios/koyomi.xcodeproj/.../koyomi.xcscheme）の
-//      LaunchAction に StoreKitConfigurationFileReference を追記
-// を毎回自動でやり直す。
+//   plugins/koyomi.storekit（＝正本。ios/配下ではないので消えない）を
+//   生成後の ios/koyomi.storekit へコピーするだけを行う。
+//
+// 【重要】以前はスキームファイル（.xcscheme）のXMLに
+// StoreKitConfigurationFileReference を自動で書き込んでいたが、
+// Xcodeがその参照パスをどう解決するかの仕様が非公開で、
+// 相対パスだと参照が壊れ（赤字表示）、絶対パスだとXcode自体がクラッシュする
+// （内部の `![self isAbsolutePath]` assertionに引っかかる）ことが分かったため、
+// このプラグインでの自動書き込みは廃止した。
+//
+// StoreKit Configuration の選択は、`expo prebuild` のたびに
+// Xcodeの Product > Scheme > Edit Scheme > Run > Options から
+// 手動で一度選び直すこと（Xcode自身に書かせれば確実に正しいパスになる）。
 //
 // 商品を追加・変更したいときは必ず plugins/koyomi.storekit を編集すること。
 // ios/koyomi.storekit を直接編集しても次回ビルドで上書きされて消える。
@@ -23,9 +30,8 @@ function withStoreKitConfig(config) {
     'ios',
     async (config) => {
       const iosRoot = config.modRequest.platformProjectRoot;
-      const projectName = config.modRequest.projectName ?? config.name;
 
-      // 1. .storekit ファイルを ios/ 直下へコピー
+      // .storekit ファイルを ios/ 直下へコピー
       const source = path.join(config.modRequest.projectRoot, 'plugins', STOREKIT_FILENAME);
       const dest = path.join(iosRoot, STOREKIT_FILENAME);
       if (!fs.existsSync(source)) {
@@ -34,39 +40,11 @@ function withStoreKitConfig(config) {
       }
       fs.copyFileSync(source, dest);
 
-      // 2. Debug用スキームに StoreKitConfigurationFileReference を追記
-      const schemePath = path.join(
-        iosRoot,
-        `${projectName}.xcodeproj`,
-        'xcshareddata',
-        'xcschemes',
-        `${projectName}.xcscheme`
+      console.log(
+        '[withStoreKitConfig] koyomi.storekit を ios/ にコピーしました。' +
+          ' Xcodeで Product > Scheme > Edit Scheme > Run > Options を開き、' +
+          ' StoreKit Configuration に koyomi.storekit を手動で選択してください。'
       );
-      if (!fs.existsSync(schemePath)) {
-        console.warn(`[withStoreKitConfig] ${schemePath} が見つからないためスキップしました。`);
-        return config;
-      }
-
-      // identifier は「.xcscheme ファイル自身」から見た相対パスのはずだが、
-      // 実際のXcodeの解決基準は分かりにくく、相対パスだと参照が壊れて
-      // StoreKit Configuration のドロップダウンで赤字（Missing file）表示になることがある。
-      // ここでは曖昧さを避けるため、素直に絶対パスを使う
-      // （このMac上でプロジェクトディレクトリを移動しない限り安定する）。
-      const relativeIdentifier = dest;
-
-      let scheme = fs.readFileSync(schemePath, 'utf8');
-      // 既存の（誤った）参照が入っていたら一旦除去してから正しい内容で入れ直す
-      scheme = scheme.replace(
-        /\s*<StoreKitConfigurationFileReference[\s\S]*?<\/StoreKitConfigurationFileReference>/,
-        ''
-      );
-      const insertion =
-        `      <StoreKitConfigurationFileReference\n` +
-        `         identifier = "${relativeIdentifier}">\n` +
-        `      </StoreKitConfigurationFileReference>\n` +
-        `   </LaunchAction>`;
-      scheme = scheme.replace('</LaunchAction>', insertion);
-      fs.writeFileSync(schemePath, scheme, 'utf8');
 
       return config;
     },
