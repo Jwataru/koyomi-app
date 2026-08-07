@@ -125,7 +125,7 @@ export default function SettingsScreen() {
   });
 
   useEffect(() => {
-    if (purchaseError) {
+    if (purchaseError && purchaseError.code !== 'user-cancelled') {
       Alert.alert('購入できませんでした', purchaseError.message ?? 'しばらくしてからもう一度お試しください。');
     }
   }, [purchaseError]);
@@ -135,7 +135,11 @@ export default function SettingsScreen() {
     try {
       await buyPro();
     } catch (e: any) {
-      Alert.alert('購入できませんでした', e?.message ?? 'しばらくしてからもう一度お試しください。');
+      // ユーザーが購入シートを閉じただけ（キャンセル）の場合は、
+      // 失敗したかのようなアラートを出さない。
+      if (e?.code !== 'user-cancelled') {
+        Alert.alert('購入できませんでした', e?.message ?? 'しばらくしてからもう一度お試しください。');
+      }
     } finally {
       setIsBuyingPro(false);
     }
