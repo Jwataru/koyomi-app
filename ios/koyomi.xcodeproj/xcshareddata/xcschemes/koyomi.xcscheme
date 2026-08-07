@@ -60,9 +60,6 @@
             ReferencedContainer = "container:koyomi.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-         <StoreKitConfigurationFileReference
-         identifier = "/Users/jibikiwataru/Downloads/koyomi-app/ios/koyomi.storekit">
-      </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
