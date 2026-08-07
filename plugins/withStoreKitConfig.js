@@ -47,10 +47,12 @@ function withStoreKitConfig(config) {
         return config;
       }
 
-      // identifier は「.xcscheme ファイル自身」から見た相対パス。
-      // xcschemes/ -> xcshareddata/ -> *.xcodeproj/ -> ios/ の3階層上が
-      // koyomi.storekit の置き場所になる。
-      const relativeIdentifier = `../../../${STOREKIT_FILENAME}`;
+      // identifier は「.xcscheme ファイル自身」から見た相対パスのはずだが、
+      // 実際のXcodeの解決基準は分かりにくく、相対パスだと参照が壊れて
+      // StoreKit Configuration のドロップダウンで赤字（Missing file）表示になることがある。
+      // ここでは曖昧さを避けるため、素直に絶対パスを使う
+      // （このMac上でプロジェクトディレクトリを移動しない限り安定する）。
+      const relativeIdentifier = dest;
 
       let scheme = fs.readFileSync(schemePath, 'utf8');
       // 既存の（誤った）参照が入っていたら一旦除去してから正しい内容で入れ直す
