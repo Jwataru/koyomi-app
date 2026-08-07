@@ -9,7 +9,15 @@
 //   バージョンごとに変わりやすい（例: requestProducts/fetchProducts/getProducts が
 //   混在している）。そのため主要な呼び出しは複数の候補名を実行時に探して
 //   最初に見つかったものを使う、というやや防御的な書き方にしている。
-import { useCallback, useEffect } from 'react';
+//
+// 【重要】購入完了の検知方法について：
+// 古い expo-iap では `currentPurchase` という状態値の変化を useEffect で
+// 監視する方式だったが、インストール済みバージョン（4.7.2）ではこのフィールドが
+// 廃止されており、代わりに useIAP() に渡す `onPurchaseSuccess` /
+// `onPurchaseError` コールバックで通知される方式に変わっている。
+// （`currentPurchase` を監視するコードのままだと、ネイティブの購入自体は
+// 成功してもアプリ側は永遠に気づけない、という不具合になるので要注意）
+import { useCallback, useEffect, useState } from 'react';
 import { useIAP, type Purchase } from 'expo-iap';
 import { saveProUnlocked } from '../data/storage';
 import { cancelTrialNotifications } from './notifications';
@@ -19,9 +27,39 @@ import { cancelTrialNotifications } from './notifications';
 export const PRO_PRODUCT_ID = 'com.yourname.koyomi.pro';
 
 export function usePurchasePro(options?: { onUnlocked?: () => void }) {
+  const [purchaseError, setPurchaseError] = useState<any>(null);
+
+  // 購入成立時の後処理（初回購入・復元どちらの経路でも呼ばれる）。
+  // finishTransaction を使うため useIAP() の呼び出しより前で定義できないので、
+  // 中身は下の useEffect 経由で iap.finishTransaction を都度参照する形にする。
+  const grantProRef = useCallback(
+    async (purchase: Purchase, finishTransaction: any) => {
+      try {
+        await saveProUnlocked(true);
+        await cancelTrialNotifications();
+        await finishTransaction?.({ purchase, isConsumable: false });
+        options?.onUnlocked?.();
+      } catch (e) {
+        if (__DEV__) {
+          console.warn('[iap] 購入後処理に失敗しました:', e);
+        }
+      }
+    },
+    [options]
+  );
+
   // 型定義がバージョンでブレるため any で受け、使うものだけ都度取り出す。
-  // onError: fetchProducts等の失敗を握りつぶさずログに出す（¥ー表示のまま原因不明になるのを防ぐ）。
   const iap = useIAP({
+    // 購入成功はここで検知する（currentPurchase 監視方式は廃止された）。
+    onPurchaseSuccess: (purchase) => {
+      if (purchase.productId === PRO_PRODUCT_ID) {
+        void grantProRef(purchase, iap.finishTransaction);
+      }
+    },
+    onPurchaseError: (error) => {
+      setPurchaseError(error);
+    },
+    // fetchProducts等、購入以外の失敗を握りつぶさずログに出す。
     onError: (error) => {
       if (__DEV__) {
         console.warn('[iap] エラー:', error?.message ?? error);
@@ -31,9 +69,6 @@ export function usePurchasePro(options?: { onUnlocked?: () => void }) {
   const {
     connected,
     products = [],
-    currentPurchase,
-    currentPurchaseError,
-    finishTransaction,
     availablePurchases = [],
   } = iap;
 
@@ -60,30 +95,11 @@ export function usePurchasePro(options?: { onUnlocked?: () => void }) {
     if (__DEV__ && connected && products.length === 0) {
       console.warn(
         '[iap] connected=true ですが products が空です。' +
-          ' Xcodeで ios/koyomi.xcworkspace を開き、Product > Scheme > Edit Scheme > Run > Options の' +
-          ' 「StoreKit Configuration」が koyomi.storekit になっているか、' +
-          ' 一度Xcodeから直接Run（Cmd+R）したかを確認してください' +
-          '（`expo run:ios` 等CLI経由の起動だとStoreKit設定が反映されないことがあります）。'
+          ' Xcodeで Product > Scheme > Edit Scheme > Run > Options の' +
+          ' 「StoreKit Configuration」が koyomi.storekit になっているか確認してください。'
       );
     }
   }, [connected, products.length]);
-
-  // 購入成立時の後処理（初回購入・復元どちらの経路でも呼ばれる）。
-  const grantPro = useCallback(
-    async (purchase: Purchase) => {
-      await saveProUnlocked(true);
-      await cancelTrialNotifications();
-      await finishTransaction?.({ purchase, isConsumable: false });
-      options?.onUnlocked?.();
-    },
-    [finishTransaction, options]
-  );
-
-  useEffect(() => {
-    if (currentPurchase && currentPurchase.productId === PRO_PRODUCT_ID) {
-      void grantPro(currentPurchase);
-    }
-  }, [currentPurchase, grantPro]);
 
   const proProduct = products.find((p: any) => p.id === PRO_PRODUCT_ID);
 
@@ -100,6 +116,8 @@ export function usePurchasePro(options?: { onUnlocked?: () => void }) {
     }
     // iOS/Androidでリクエストの形が異なる（OpenIAP仕様）。
     // apple.sku は単一の文字列、google.skus は配列を渡す。
+    // 購入の成否そのものは onPurchaseSuccess / onPurchaseError（上のuseIAPの引数）で
+    // 検知するので、ここでは「リクエストの送信自体」が失敗したときだけ例外を投げる。
     await requestPurchaseFn({
       request: {
         apple: { sku: PRO_PRODUCT_ID },
@@ -118,15 +136,16 @@ export function usePurchasePro(options?: { onUnlocked?: () => void }) {
   useEffect(() => {
     const restored = availablePurchases.find((p: Purchase) => p.productId === PRO_PRODUCT_ID);
     if (restored) {
-      void grantPro(restored);
+      void grantProRef(restored, iap.finishTransaction);
     }
-  }, [availablePurchases, grantPro]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availablePurchases, grantProRef]);
 
   return {
     connected,
     proProduct, // proProduct?.displayPrice を購入ボタンの価格表示に使う想定
     buyPro,
     restorePro,
-    purchaseError: currentPurchaseError,
+    purchaseError,
   };
 }
