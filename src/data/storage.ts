@@ -17,6 +17,7 @@ const KEYS = {
   wallpaperSaved: 'koyomi:wallpaperSaved',
   wallpaperLastApplied: 'koyomi:wallpaperLastApplied',
   todos: 'koyomi:todos',
+  lockScreenTodos: 'koyomi:lockScreenTodos',
   firstLaunchAt: 'koyomi:firstLaunchAt',
   proUnlocked: 'koyomi:proUnlocked',
   trialNotificationIds: 'koyomi:trialNotificationIds',
@@ -49,11 +50,30 @@ export type WallpaperSavedMap = Partial<Record<LevelKey, WallpaperSavedSnapshot>
 
 // Todayタブに追加したTODOリスト用。
 // checkedAt が null のものは未完了、値が入っているものはチェック済み（チェックした日時のISO文字列）。
+// dueDate は "YYYY-MM-DD"（未設定は null）。showOnLockScreen はロック画面に表示したいかどうかの希望フラグで、
+// 実際にロック画面へ反映されているかどうかは別途 lockScreenTodos（反映スナップショット）で管理する。
 export type TodoItem = {
   id: string;
   text: string;
   checkedAt: string | null;
   createdAt: string;
+  dueDate: string | null;
+  showOnLockScreen: boolean;
+};
+
+// 「ロック画面に反映」ボタンを押した時点のスナップショット。
+// TodoItem 側（現在の希望状態）とこれを比較することで、各TODOが「反映済みか／未反映か」を判定できる。
+// ※ この時点ではまだ壁紙エンジン（wallpaperEngine）には接続しておらず、
+//   このスナップショットを保存するところまでが実装範囲。実際にロック画面の見た目へ
+//   反映する処理は今後 wallpaperEngine 側に組み込む。
+export type LockScreenTodoSnapshotItem = {
+  id: string;
+  text: string;
+  dueDate: string | null;
+};
+export type LockScreenTodosSnapshot = {
+  updatedAt: string;
+  items: LockScreenTodoSnapshotItem[];
 };
 
 const DEFAULT_CYCLE: CycleSettings = { nextPeriodDate: '', cycleLen: 28 };
@@ -94,8 +114,21 @@ export const saveOnboarding = (v: OnboardingState) => setJSON(KEYS.onboarding, v
 export const loadWallpaperSaved = () => getJSON(KEYS.wallpaperSaved, {} as WallpaperSavedMap);
 export const saveWallpaperSaved = (v: WallpaperSavedMap) => setJSON(KEYS.wallpaperSaved, v);
 
-export const loadTodos = () => getJSON(KEYS.todos, [] as TodoItem[]);
+// 過去バージョン（dueDate / showOnLockScreen 追加前）に保存されたデータとの互換のため、
+// 読み込み時に欠けているフィールドをデフォルト値で補う。
+export async function loadTodos(): Promise<TodoItem[]> {
+  const raw = await getJSON(KEYS.todos, [] as TodoItem[]);
+  return raw.map((t) => ({
+    ...t,
+    dueDate: t.dueDate ?? null,
+    showOnLockScreen: t.showOnLockScreen ?? false,
+  }));
+}
 export const saveTodos = (v: TodoItem[]) => setJSON(KEYS.todos, v);
+
+export const loadLockScreenTodos = () =>
+  getJSON(KEYS.lockScreenTodos, null as LockScreenTodosSnapshot | null);
+export const saveLockScreenTodos = (v: LockScreenTodosSnapshot) => setJSON(KEYS.lockScreenTodos, v);
 
 // 無料期間の起算日（ISO文字列）。アプリの初回起動時に一度だけ書き込む。
 export const loadFirstLaunchAt = () => getJSON(KEYS.firstLaunchAt, null as string | null);

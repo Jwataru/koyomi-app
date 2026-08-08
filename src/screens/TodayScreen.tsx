@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,10 @@ import {
   Pressable,
   Modal,
   Alert,
+  Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { colors, LEVELS, LevelKey } from '../theme/theme';
 import { calcLevel, daysUntilNextPeriod, toDate } from '../logic/cycle';
 import {
@@ -19,9 +21,12 @@ import {
   loadPhotoMeta,
   loadTodos,
   saveTodos,
+  loadLockScreenTodos,
+  saveLockScreenTodos,
   CycleSettings,
   PhotoMetaMap,
   TodoItem,
+  LockScreenTodosSnapshot,
 } from '../data/storage';
 import LevelIcon from '../components/LevelIcon';
 import { getTrialStatus, TrialStatus } from '../logic/trial';
@@ -41,6 +46,53 @@ function formatCheckedAt(iso: string | null): string {
   return `${m}/${day} ${hh}:${mm}`;
 }
 
+// "YYYY-MM-DD" 文字列 <-> Date の相互変換。SettingsScreen の同名関数と同じ考え方。
+function parseDateOrToday(s: string | null): Date {
+  if (s) {
+    const [y, m, d] = s.split('-').map(Number);
+    if (y && m && d) return new Date(y, m - 1, d);
+  }
+  return new Date();
+}
+
+function formatDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// 今日を0として、締め切り日までの残り日数（マイナスなら期限切れ）
+function daysUntilDue(dateKey: string): number {
+  const d = parseDateOrToday(dateKey);
+  d.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((d.getTime() - today.getTime()) / 86400000);
+}
+
+// 締め切りピルの表示文言と、迫り具合に応じた色を返す
+function getDueMeta(dateKey: string): { label: string; color: string } {
+  const diff = daysUntilDue(dateKey);
+  const d = parseDateOrToday(dateKey);
+  const md = `${d.getMonth() + 1}/${d.getDate()}`;
+  if (diff < 0) return { label: `${md}（期限切れ）`, color: colors.l4 };
+  if (diff === 0) return { label: `${md}（本日締切）`, color: colors.l4 };
+  if (diff <= 3) return { label: `${md}まで`, color: colors.l3 };
+  return { label: `${md}まで`, color: colors.inkMuted };
+}
+
+// 締め切りが近い順に並べる。締め切り未設定のものは後ろへ、その中では作成順を保つ。
+function sortByDeadline(a: TodoItem, b: TodoItem): number {
+  if (a.dueDate && b.dueDate) {
+    if (a.dueDate !== b.dueDate) return a.dueDate < b.dueDate ? -1 : 1;
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  }
+  if (a.dueDate && !b.dueDate) return -1;
+  if (!a.dueDate && b.dueDate) return 1;
+  return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+}
+
 export default function TodayScreen() {
   const [cycle, setCycle] = useState<CycleSettings | null>(null);
   const [photoMeta, setPhotoMeta] = useState<PhotoMetaMap | null>(null);
@@ -48,18 +100,25 @@ export default function TodayScreen() {
   const [newTodoText, setNewTodoText] = useState('');
   const [checkedModalVisible, setCheckedModalVisible] = useState(false);
   const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
+  // 「ロック画面に反映」ボタンを最後に押した時点のスナップショット
+  const [lockScreenSnapshot, setLockScreenSnapshot] = useState<LockScreenTodosSnapshot | null>(null);
+  // 締め切り日ピッカーを開いているTODOのid（null なら非表示）
+  const [dueDatePickerId, setDueDatePickerId] = useState<string | null>(null);
+  const [reflecting, setReflecting] = useState(false);
 
   const reload = useCallback(async () => {
-    const [c, p, t, trial] = await Promise.all([
+    const [c, p, t, trial, snap] = await Promise.all([
       loadCycleSettings(),
       loadPhotoMeta(),
       loadTodos(),
       getTrialStatus(),
+      loadLockScreenTodos(),
     ]);
     setCycle(c);
     setPhotoMeta(p);
     setTodos(t);
     setTrialStatus(trial);
+    setLockScreenSnapshot(snap);
   }, []);
 
   // 設定画面で値を変えて戻ってきたときに再読み込みする
@@ -74,7 +133,14 @@ export default function TodayScreen() {
     if (!text) return;
     const next: TodoItem[] = [
       ...todos,
-      { id: makeTodoId(), text, checkedAt: null, createdAt: new Date().toISOString() },
+      {
+        id: makeTodoId(),
+        text,
+        checkedAt: null,
+        createdAt: new Date().toISOString(),
+        dueDate: null,
+        showOnLockScreen: false,
+      },
     ];
     setTodos(next);
     setNewTodoText('');
@@ -93,6 +159,18 @@ export default function TodayScreen() {
     await saveTodos(next);
   }
 
+  async function setTodoDueDate(id: string, dateKey: string | null) {
+    const next = todos.map((t) => (t.id === id ? { ...t, dueDate: dateKey } : t));
+    setTodos(next);
+    await saveTodos(next);
+  }
+
+  async function toggleShowOnLockScreen(id: string) {
+    const next = todos.map((t) => (t.id === id ? { ...t, showOnLockScreen: !t.showOnLockScreen } : t));
+    setTodos(next);
+    await saveTodos(next);
+  }
+
   function clearAllChecked() {
     Alert.alert('チェック済みを全部削除', 'チェック済みのTODOをすべて削除します。よろしいですか？', [
       { text: 'キャンセル', style: 'cancel' },
@@ -106,6 +184,67 @@ export default function TodayScreen() {
         },
       },
     ]);
+  }
+
+  function onChangeDueDate(event: DateTimePickerEvent, selected?: Date) {
+    if (Platform.OS === 'android') {
+      // Androidのダイアログは選択/キャンセルで自動的に閉じる
+      const id = dueDatePickerId;
+      setDueDatePickerId(null);
+      if (event.type === 'dismissed' || !id) return;
+      if (selected) setTodoDueDate(id, formatDateKey(selected));
+      return;
+    }
+    if (selected && dueDatePickerId) {
+      setTodoDueDate(dueDatePickerId, formatDateKey(selected));
+    }
+  }
+
+  // ロック画面に表示したいTODO（未完了 & トグルON）を締め切り順に並べたもの。
+  // これがそのまま「反映」ボタンで保存されるスナップショットの中身になる。
+  const desiredLockScreenTodos = useMemo(
+    () =>
+      todos
+        .filter((t) => !t.checkedAt && t.showOnLockScreen)
+        .sort(sortByDeadline)
+        .map((t) => ({ id: t.id, text: t.text, dueDate: t.dueDate })),
+    [todos]
+  );
+
+  // 現在の希望状態が、最後に反映したスナップショットと完全に一致しているか
+  const hasUnreflectedChanges = useMemo(() => {
+    const snapItems = lockScreenSnapshot?.items ?? [];
+    if (snapItems.length !== desiredLockScreenTodos.length) return true;
+    return desiredLockScreenTodos.some((item, i) => {
+      const s = snapItems[i];
+      return !s || s.id !== item.id || s.text !== item.text || s.dueDate !== item.dueDate;
+    });
+  }, [desiredLockScreenTodos, lockScreenSnapshot]);
+
+  // このTODO個別について、「表示させたい状態」と「実際に反映済みのスナップショット」がずれているか
+  function isTodoUnreflected(todo: TodoItem): boolean {
+    const snapItems = lockScreenSnapshot?.items ?? [];
+    const inSnapshot = snapItems.find((s) => s.id === todo.id);
+    if (!todo.checkedAt && todo.showOnLockScreen) {
+      // 表示したい状態 → スナップショットに同じ内容で入っていなければ未反映
+      return !inSnapshot || inSnapshot.text !== todo.text || inSnapshot.dueDate !== todo.dueDate;
+    }
+    // 表示OFF（またはチェック済みで対象外）なのに、まだスナップショット側に残っている
+    return !!inSnapshot;
+  }
+
+  async function reflectToLockScreen() {
+    setReflecting(true);
+    try {
+      const snapshot: LockScreenTodosSnapshot = {
+        updatedAt: new Date().toISOString(),
+        items: desiredLockScreenTodos,
+      };
+      await saveLockScreenTodos(snapshot);
+      setLockScreenSnapshot(snapshot);
+    } finally {
+      setReflecting(false);
+    }
   }
 
   if (!cycle || !cycle.nextPeriodDate) {
@@ -128,10 +267,13 @@ export default function TodayScreen() {
   const info = LEVELS[level];
   const photo = photoMeta?.[level];
 
-  const activeTodos = todos.filter((t) => !t.checkedAt);
+  // 未完了TODOは締め切りが近い順に表示する
+  const activeTodos = todos.filter((t) => !t.checkedAt).sort(sortByDeadline);
   const checkedTodos = todos
     .filter((t) => !!t.checkedAt)
     .sort((a, b) => new Date(b.checkedAt as string).getTime() - new Date(a.checkedAt as string).getTime());
+
+  const editingTodo = dueDatePickerId ? todos.find((t) => t.id === dueDatePickerId) ?? null : null;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -213,16 +355,65 @@ export default function TodayScreen() {
           {activeTodos.length === 0 ? (
             <Text style={styles.todoEmptyText}>未完了のTODOはありません</Text>
           ) : (
-            activeTodos.map((todo) => (
-              <View key={todo.id} style={styles.todoRow}>
-                <Pressable style={styles.checkbox} onPress={() => checkTodo(todo.id)} hitSlop={8} />
-                <Text style={styles.todoText}>{todo.text}</Text>
-                <Pressable onPress={() => deleteTodo(todo.id)} hitSlop={8}>
-                  <Text style={styles.todoDel}>×</Text>
-                </Pressable>
-              </View>
-            ))
+            activeTodos.map((todo) => {
+              const dueMeta = todo.dueDate ? getDueMeta(todo.dueDate) : null;
+              const unreflected = isTodoUnreflected(todo);
+              return (
+                <View key={todo.id} style={styles.todoCard}>
+                  <View style={styles.todoRow}>
+                    <Pressable style={styles.checkbox} onPress={() => checkTodo(todo.id)} hitSlop={8} />
+                    <Text style={styles.todoText}>{todo.text}</Text>
+                    <Pressable onPress={() => deleteTodo(todo.id)} hitSlop={8}>
+                      <Text style={styles.todoDel}>×</Text>
+                    </Pressable>
+                  </View>
+
+                  <View style={styles.todoMetaRow}>
+                    <Pressable
+                      style={[styles.dueDatePill, dueMeta && { borderColor: dueMeta.color }]}
+                      onPress={() => setDueDatePickerId(todo.id)}
+                    >
+                      <Text style={[styles.dueDatePillText, dueMeta && { color: dueMeta.color }]}>
+                        📅 {dueMeta ? dueMeta.label : '締切を設定'}
+                      </Text>
+                    </Pressable>
+
+                    <Pressable
+                      style={[styles.lockPill, todo.showOnLockScreen && styles.lockPillActive]}
+                      onPress={() => toggleShowOnLockScreen(todo.id)}
+                    >
+                      <Text style={[styles.lockPillText, todo.showOnLockScreen && styles.lockPillTextActive]}>
+                        🔒 ロック画面{todo.showOnLockScreen ? 'ON' : 'OFF'}
+                      </Text>
+                    </Pressable>
+
+                    {unreflected && (
+                      <View style={styles.unreflectedTag}>
+                        <Text style={styles.unreflectedTagText}>未反映</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              );
+            })
           )}
+
+          <View style={styles.lockReflectSection}>
+            <Pressable
+              style={[styles.lockReflectBtn, !hasUnreflectedChanges && styles.lockReflectBtnDone]}
+              onPress={reflectToLockScreen}
+              disabled={reflecting}
+            >
+              <Text style={styles.lockReflectBtnText}>
+                {reflecting ? '反映中…' : hasUnreflectedChanges ? '🔒 ロック画面に反映' : '✓ 反映済み'}
+              </Text>
+            </Pressable>
+            <Text style={styles.lockReflectHint}>
+              {desiredLockScreenTodos.length > 0
+                ? `ロック画面表示ONのTODO ${desiredLockScreenTodos.length}件`
+                : 'ロック画面表示ONのTODOはありません'}
+            </Text>
+          </View>
 
           <Pressable style={styles.checkedListBtn} onPress={() => setCheckedModalVisible(true)}>
             <Text style={styles.checkedListBtnText}>
@@ -273,6 +464,54 @@ export default function TodayScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* TODO締め切り日ピッカー */}
+      {dueDatePickerId &&
+        (Platform.OS === 'ios' ? (
+          <Modal
+            visible
+            transparent
+            animationType="fade"
+            onRequestClose={() => setDueDatePickerId(null)}
+          >
+            <Pressable style={styles.pickerOverlay} onPress={() => setDueDatePickerId(null)}>
+              <Pressable style={styles.pickerSheet} onPress={() => {}}>
+                <View style={styles.pickerHead}>
+                  <Pressable onPress={() => setDueDatePickerId(null)}>
+                    <Text style={styles.pickerCancel}>キャンセル</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      setTodoDueDate(dueDatePickerId, null);
+                      setDueDatePickerId(null);
+                    }}
+                  >
+                    <Text style={styles.pickerClear}>締切をクリア</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setDueDatePickerId(null)}>
+                    <Text style={styles.pickerDone}>完了</Text>
+                  </Pressable>
+                </View>
+                <DateTimePicker
+                  value={parseDateOrToday(editingTodo?.dueDate ?? null)}
+                  mode="date"
+                  display="spinner"
+                  locale="ja-JP"
+                  onChange={onChangeDueDate}
+                  textColor={colors.ink}
+                  style={styles.pickerWidget}
+                />
+              </Pressable>
+            </Pressable>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={parseDateOrToday(editingTodo?.dueDate ?? null)}
+            mode="date"
+            display="default"
+            onChange={onChangeDueDate}
+          />
+        ))}
     </SafeAreaView>
   );
 }
@@ -388,13 +627,15 @@ const styles = StyleSheet.create({
   },
   todoAddBtnText: { color: colors.ink, fontSize: 18, lineHeight: 20 },
   todoEmptyText: { color: colors.inkMuted, fontSize: 12, textAlign: 'center', paddingVertical: 6 },
+  todoCard: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hairline,
+  },
   todoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.hairline,
   },
   checkbox: {
     width: 18,
@@ -405,6 +646,63 @@ const styles = StyleSheet.create({
   },
   todoText: { flex: 1, color: colors.ink, fontSize: 13 },
   todoDel: { color: colors.inkMuted, fontSize: 17 },
+  todoMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    marginLeft: 28, // チェックボックス分インデント
+  },
+  dueDatePill: {
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: 20,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  dueDatePillText: { color: colors.inkMuted, fontSize: 11 },
+  lockPill: {
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: 20,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  lockPillActive: {
+    backgroundColor: colors.l1Soft,
+    borderColor: colors.l1,
+  },
+  lockPillText: { color: colors.inkMuted, fontSize: 11 },
+  lockPillTextActive: { color: colors.l1, fontWeight: '600' },
+  unreflectedTag: {
+    backgroundColor: colors.l2Soft,
+    borderRadius: 20,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  unreflectedTagText: { color: colors.l2, fontSize: 11, fontWeight: '600' },
+
+  lockReflectSection: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  lockReflectBtn: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: colors.l1Soft,
+    borderWidth: 1,
+    borderColor: colors.l1,
+  },
+  lockReflectBtnDone: {
+    backgroundColor: colors.bgPanel2,
+    borderColor: colors.hairline,
+  },
+  lockReflectBtnText: { color: colors.l1, fontSize: 13, fontWeight: '700' },
+  lockReflectHint: { color: colors.inkMuted, fontSize: 11, marginTop: 6 },
+
   checkedListBtn: { marginTop: 14, alignItems: 'center', paddingVertical: 8 },
   checkedListBtnText: { color: colors.inkMuted, fontSize: 12 },
 
@@ -439,4 +737,29 @@ const styles = StyleSheet.create({
     backgroundColor: colors.l4Soft,
   },
   clearAllBtnText: { color: colors.l4, fontSize: 13, fontWeight: '600' },
+
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(8,10,14,0.6)',
+    justifyContent: 'flex-end',
+  },
+  pickerSheet: {
+    backgroundColor: colors.bgPanel2,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 20,
+  },
+  pickerHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hairline,
+  },
+  pickerCancel: { color: colors.inkMuted, fontSize: 14 },
+  pickerClear: { color: colors.l4, fontSize: 13 },
+  pickerDone: { color: colors.l1, fontSize: 14, fontWeight: '700' },
+  pickerWidget: { backgroundColor: colors.bgPanel2 },
 });
