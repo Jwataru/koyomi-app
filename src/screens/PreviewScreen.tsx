@@ -62,6 +62,13 @@ const TODO_BLOCK_WIDTH_PX = PHONE_SCREEN_WIDTH * TODO_BLOCK_WIDTH_RATIO;
 // フォントサイズのスライダー表示用：実機の目安の画面幅（iPhone標準サイズ相当）でpt換算する
 const FONT_SIZE_REFERENCE_WIDTH = 390;
 
+// 調整スライダーの実幅（px）。@react-native-community/slider は New Architecture (Fabric) 環境で
+// width: '100%' のようなパーセント指定だと横幅が正しく反映されず、つまみが潰れて操作不能になる
+// ことがあるため、editPanel の実際の内側幅からピクセル値を計算して明示的に渡す。
+const EDIT_PANEL_MAX_WIDTH = 340;
+const EDIT_PANEL_PADDING_H = 20;
+const SLIDER_WIDTH = Math.min(DEVICE_W, EDIT_PANEL_MAX_WIDTH) - EDIT_PANEL_PADDING_H * 2;
+
 function formatTime(d: Date) {
   const h = String(d.getHours()).padStart(2, '0');
   const m = String(d.getMinutes()).padStart(2, '0');
@@ -306,16 +313,11 @@ export default function PreviewScreen() {
 
               <Text style={styles.editSectionLabel}>文字の大きさ（目安 {fontSizePtEstimate}pt）</Text>
               <Slider
-                style={styles.adjustSlider}
+                style={[styles.adjustSlider, { width: SLIDER_WIDTH }]}
                 minimumValue={MIN_FONT_SIZE_RATIO}
                 maximumValue={MAX_FONT_SIZE_RATIO}
                 value={draftLayout.fontSizeRatio}
                 onValueChange={(v) => updateDraft({ fontSizeRatio: v })}
-                onSlidingStart={() => setScrollLocked(true)}
-                onSlidingComplete={(v) => {
-                  updateDraft({ fontSizeRatio: v });
-                  setScrollLocked(false);
-                }}
                 minimumTrackTintColor={colors.l1}
                 maximumTrackTintColor={colors.hairline}
                 thumbTintColor={colors.l1}
@@ -386,16 +388,11 @@ export default function PreviewScreen() {
                     パネルの濃さ（{Math.round(draftLayout.panelOpacity * 100)}%）
                   </Text>
                   <Slider
-                    style={styles.adjustSlider}
+                    style={[styles.adjustSlider, { width: SLIDER_WIDTH }]}
                     minimumValue={0.05}
                     maximumValue={0.9}
                     value={draftLayout.panelOpacity}
                     onValueChange={(v) => updateDraft({ panelOpacity: v })}
-                    onSlidingStart={() => setScrollLocked(true)}
-                    onSlidingComplete={(v) => {
-                      updateDraft({ panelOpacity: v });
-                      setScrollLocked(false);
-                    }}
                     minimumTrackTintColor={colors.l1}
                     maximumTrackTintColor={colors.hairline}
                     thumbTintColor={colors.l1}
@@ -609,7 +606,7 @@ const styles = StyleSheet.create({
   togglePillText: { color: colors.inkMuted, fontSize: 12, fontWeight: '600' },
   togglePillTextActive: { color: colors.l1 },
 
-  adjustSlider: { width: '100%', height: 32 },
+  adjustSlider: { height: 32 },
 
   editButtonRow: { flexDirection: 'row', gap: 12, marginTop: 20, width: '100%' },
   cancelBtn: {
