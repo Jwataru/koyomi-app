@@ -11,15 +11,20 @@ import ViewShot from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
 import { colors, LEVELS, LevelKey } from '../theme/theme';
 import LevelIcon from '../components/LevelIcon';
+import LockScreenTodoBlock from '../components/LockScreenTodoBlock';
 import {
   loadCycleSettings,
   loadPhotoMeta,
   PhotoMeta,
   loadWallpaperLastApplied,
   saveWallpaperLastApplied,
+  loadLockScreenTodos,
+  loadTodoLockScreenLayout,
+  LockScreenTodosSnapshot,
 } from '../data/storage';
 import { calcLevel, toDate } from '../logic/cycle';
 import { getTrialStatus } from '../logic/trial';
+import { DEFAULT_TODO_LAYOUT, TodoLockScreenLayout, TODO_BLOCK_WIDTH_RATIO } from '../logic/todoLayout';
 
 export const WALLPAPER_ALBUM_NAME = 'koyomi壁紙';
 
@@ -83,6 +88,8 @@ export default function WallpaperEngine() {
   const shotRef = useRef<ViewShot>(null);
   const [level, setLevel] = useState<LevelKey>(1);
   const [photo, setPhoto] = useState<PhotoMeta | null>(null);
+  const [todoSnapshot, setTodoSnapshot] = useState<LockScreenTodosSnapshot | null>(null);
+  const [todoLayout, setTodoLayout] = useState<TodoLockScreenLayout>(DEFAULT_TODO_LAYOUT);
 
   useEffect(() => {
     _requestSave = async (forcedLevel?: LevelKey): Promise<WallpaperSaveResult> => {
@@ -99,7 +106,12 @@ export default function WallpaperEngine() {
           };
         }
 
-        const [cycle, photoMeta] = await Promise.all([loadCycleSettings(), loadPhotoMeta()]);
+        const [cycle, photoMeta, lockTodos, layout] = await Promise.all([
+          loadCycleSettings(),
+          loadPhotoMeta(),
+          loadLockScreenTodos(),
+          loadTodoLockScreenLayout(),
+        ]);
         const autoLevel: LevelKey = cycle?.nextPeriodDate
           ? calcLevel(new Date(), toDate(cycle.nextPeriodDate), cycle.cycleLen)
           : 1;
@@ -111,6 +123,8 @@ export default function WallpaperEngine() {
         await new Promise<void>((resolve) => {
           setLevel(lv);
           setPhoto(nextPhoto);
+          setTodoSnapshot(lockTodos);
+          setTodoLayout(layout);
           setTimeout(resolve, 120);
         });
 
@@ -209,6 +223,16 @@ export default function WallpaperEngine() {
 
   const info = LEVELS[level];
 
+  // プレビュー画面（PreviewScreen）と同じ座標系（0-100%）で位置を保存しているため、
+  // ここでは実機の画面サイズ（width/height）を基準にpxへ変換するだけでよい。
+  const todoBlockWidthPx = width * TODO_BLOCK_WIDTH_RATIO;
+  const todoBlockLeftPx = Math.max(
+    0,
+    Math.min(width - todoBlockWidthPx, (todoLayout.xPercent / 100) * width - todoBlockWidthPx / 2)
+  );
+  const todoBlockTopPx = (todoLayout.yPercent / 100) * height;
+  const todoItems = todoSnapshot?.items ?? [];
+
   return (
     // opacity ではなく画面外への配置で「非表示」にする。
     // opacity:0 の View は見た目通り透明な状態でキャプチャされてしまうため、
@@ -228,6 +252,18 @@ export default function WallpaperEngine() {
               </View>
             )}
           </View>
+          {todoItems.length > 0 && (
+            <View
+              style={{
+                position: 'absolute',
+                width: todoBlockWidthPx,
+                left: todoBlockLeftPx,
+                top: todoBlockTopPx,
+              }}
+            >
+              <LockScreenTodoBlock items={todoItems} fontScale={todoLayout.fontScale} containerWidth={width} />
+            </View>
+          )}
         </View>
       </ViewShot>
     </View>

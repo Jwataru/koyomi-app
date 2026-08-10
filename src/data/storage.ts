@@ -8,6 +8,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LevelKey } from '../theme/theme';
+import { DEFAULT_TODO_LAYOUT, TodoLockScreenLayout, clampTodoLayout } from '../logic/todoLayout';
 
 const KEYS = {
   cycleSettings: 'koyomi:cycleSettings',
@@ -18,6 +19,7 @@ const KEYS = {
   wallpaperLastApplied: 'koyomi:wallpaperLastApplied',
   todos: 'koyomi:todos',
   lockScreenTodos: 'koyomi:lockScreenTodos',
+  todoLockScreenLayout: 'koyomi:todoLockScreenLayout',
   firstLaunchAt: 'koyomi:firstLaunchAt',
   proUnlocked: 'koyomi:proUnlocked',
   trialNotificationIds: 'koyomi:trialNotificationIds',
@@ -129,6 +131,15 @@ export const saveTodos = (v: TodoItem[]) => setJSON(KEYS.todos, v);
 export const loadLockScreenTodos = () =>
   getJSON(KEYS.lockScreenTodos, null as LockScreenTodosSnapshot | null);
 export const saveLockScreenTodos = (v: LockScreenTodosSnapshot) => setJSON(KEYS.lockScreenTodos, v);
+
+// ロック画面上でTODOブロックをどこに・どのくらいの大きさで表示するかの希望値。
+// プレビュー画面で調整し、wallpaperEngineの実際の壁紙描画にもそのまま使う。
+export async function loadTodoLockScreenLayout(): Promise<TodoLockScreenLayout> {
+  const raw = await getJSON(KEYS.todoLockScreenLayout, DEFAULT_TODO_LAYOUT);
+  return clampTodoLayout({ ...DEFAULT_TODO_LAYOUT, ...raw });
+}
+export const saveTodoLockScreenLayout = (v: TodoLockScreenLayout) =>
+  setJSON(KEYS.todoLockScreenLayout, v);
 
 // 無料期間の起算日（ISO文字列）。アプリの初回起動時に一度だけ書き込む。
 export const loadFirstLaunchAt = () => getJSON(KEYS.firstLaunchAt, null as string | null);

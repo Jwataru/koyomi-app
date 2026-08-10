@@ -1,11 +1,43 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, Image, StyleSheet, SafeAreaView, Pressable, Dimensions } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  SafeAreaView,
+  Pressable,
+  Dimensions,
+  PanResponder,
+  LayoutChangeEvent,
+} from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, LEVELS, LevelKey } from '../theme/theme';
 import { calcLevel, toDate } from '../logic/cycle';
-import { loadCycleSettings, loadPhotoMeta, CycleSettings, PhotoMetaMap } from '../data/storage';
+import {
+  loadCycleSettings,
+  loadPhotoMeta,
+  loadLockScreenTodos,
+  loadTodoLockScreenLayout,
+  saveTodoLockScreenLayout,
+  CycleSettings,
+  PhotoMetaMap,
+  LockScreenTodosSnapshot,
+} from '../data/storage';
 import { getTrialStatus, TrialStatus } from '../logic/trial';
 import LevelIcon from '../components/LevelIcon';
+import LockScreenTodoBlock from '../components/LockScreenTodoBlock';
+import {
+  TodoLockScreenLayout,
+  TodoFontScale,
+  DEFAULT_TODO_LAYOUT,
+  DUMMY_PREVIEW_TODOS,
+  FONT_SCALE_ORDER,
+  FONT_SCALE_LABEL,
+  TODO_BLOCK_WIDTH_RATIO,
+  SAFE_AREA_TOP_PERCENT,
+  SAFE_AREA_BOTTOM_PERCENT,
+  clampTodoLayout,
+} from '../logic/todoLayout';
 
 const LEVEL_LIST: LevelKey[] = [1, 2, 3, 4];
 
@@ -18,6 +50,7 @@ const PHONE_PADDING = 12;
 const PHONE_SCREEN_WIDTH = PHONE_SHELL_WIDTH - PHONE_PADDING * 2;
 const PHONE_SCREEN_HEIGHT = PHONE_SCREEN_WIDTH * (DEVICE_H / DEVICE_W);
 const PHONE_SHELL_HEIGHT = PHONE_SCREEN_HEIGHT + PHONE_PADDING * 2;
+const TODO_BLOCK_WIDTH_PX = PHONE_SCREEN_WIDTH * TODO_BLOCK_WIDTH_RATIO;
 
 function formatTime(d: Date) {
   const h = String(d.getHours()).padStart(2, '0');
@@ -33,11 +66,35 @@ export default function PreviewScreen() {
   const [photoMeta, setPhotoMeta] = useState<PhotoMetaMap | null>(null);
   const [overrideLevel, setOverrideLevel] = useState<LevelKey | null>(null);
   const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
+  const [lockTodos, setLockTodos] = useState<LockScreenTodosSnapshot | null>(null);
+
+  // 保存済みのTODO表示レイアウトと、編集中のドラフト（キャンセルで破棄できるように分けている）
+  const [todoLayout, setTodoLayout] = useState<TodoLockScreenLayout>(DEFAULT_TODO_LAYOUT);
+  const [draftLayout, setDraftLayout] = useState<TodoLockScreenLayout>(DEFAULT_TODO_LAYOUT);
+  const [editingLayout, setEditingLayout] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [blockHeightPx, setBlockHeightPx] = useState(0);
+
+  const editingRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  useEffect(() => {
+    editingRef.current = editingLayout;
+  }, [editingLayout]);
 
   const reload = useCallback(async () => {
-    setCycle(await loadCycleSettings());
-    setPhotoMeta(await loadPhotoMeta());
-    setTrialStatus(await getTrialStatus());
+    const [c, p, trial, lockSnap, layout] = await Promise.all([
+      loadCycleSettings(),
+      loadPhotoMeta(),
+      getTrialStatus(),
+      loadLockScreenTodos(),
+      loadTodoLockScreenLayout(),
+    ]);
+    setCycle(c);
+    setPhotoMeta(p);
+    setTrialStatus(trial);
+    setLockTodos(lockSnap);
+    setTodoLayout(layout);
+    setDraftLayout(layout);
   }, []);
 
   useFocusEffect(
@@ -46,6 +103,67 @@ export default function PreviewScreen() {
     }, [reload])
   );
 
+  const blockHeightPercent = blockHeightPx > 0 ? (blockHeightPx / PHONE_SCREEN_HEIGHT) * 100 : 0;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => editingRef.current,
+      onMoveShouldSetPanResponder: (_e, g) =>
+        editingRef.current && (Math.abs(g.dx) > 2 || Math.abs(g.dy) > 2),
+      onPanResponderGrant: () => {
+        setDraftLayout((prev) => {
+          dragStartRef.current = { x: prev.xPercent, y: prev.yPercent };
+          return prev;
+        });
+      },
+      onPanResponderMove: (_e, g) => {
+        const dxPercent = (g.dx / PHONE_SCREEN_WIDTH) * 100;
+        const dyPercent = (g.dy / PHONE_SCREEN_HEIGHT) * 100;
+        setDraftLayout((prev) =>
+          clampTodoLayout(
+            {
+              ...prev,
+              xPercent: dragStartRef.current.x + dxPercent,
+              yPercent: dragStartRef.current.y + dyPercent,
+            },
+            blockHeightPercent
+          )
+        );
+      },
+    })
+  ).current;
+
+  function onBlockLayout(e: LayoutChangeEvent) {
+    setBlockHeightPx(e.nativeEvent.layout.height);
+  }
+
+  function startEditing() {
+    setDraftLayout(todoLayout);
+    setEditingLayout(true);
+  }
+
+  function cancelEditing() {
+    setDraftLayout(todoLayout);
+    setEditingLayout(false);
+  }
+
+  async function confirmEditing() {
+    setSaving(true);
+    try {
+      const clamped = clampTodoLayout(draftLayout, blockHeightPercent);
+      await saveTodoLockScreenLayout(clamped);
+      setTodoLayout(clamped);
+      setDraftLayout(clamped);
+      setEditingLayout(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function changeFontScale(scale: TodoFontScale) {
+    setDraftLayout((prev) => clampTodoLayout({ ...prev, fontScale: scale }, blockHeightPercent));
+  }
+
   const autoLevel: LevelKey =
     cycle?.nextPeriodDate ? calcLevel(new Date(), toDate(cycle.nextPeriodDate), cycle.cycleLen) : 1;
   const level = overrideLevel ?? autoLevel;
@@ -53,11 +171,25 @@ export default function PreviewScreen() {
   const photo = photoMeta?.[level];
   const now = new Date();
 
+  const hasRealTodos = (lockTodos?.items?.length ?? 0) > 0;
+  const displayTodos = hasRealTodos ? lockTodos!.items : editingLayout ? DUMMY_PREVIEW_TODOS : [];
+  const activeLayout = editingLayout ? draftLayout : todoLayout;
+  const blockLeftPx = Math.max(
+    0,
+    Math.min(
+      PHONE_SCREEN_WIDTH - TODO_BLOCK_WIDTH_PX,
+      (activeLayout.xPercent / 100) * PHONE_SCREEN_WIDTH - TODO_BLOCK_WIDTH_PX / 2
+    )
+  );
+  const blockTopPx = (activeLayout.yPercent / 100) * PHONE_SCREEN_HEIGHT;
+  const safeAreaTopPx = (SAFE_AREA_TOP_PERCENT / 100) * PHONE_SCREEN_HEIGHT;
+  const safeAreaBottomPx = (SAFE_AREA_BOTTOM_PERCENT / 100) * PHONE_SCREEN_HEIGHT;
+
   const content = (
     <View style={styles.lockContent}>
       <Text style={styles.lockDate}>{formatDate(now)}</Text>
       <Text style={styles.lockTime}>{formatTime(now)}</Text>
-      {!photo?.uri && (
+      {!photo?.uri && !editingLayout && (
         <View style={styles.fallbackIcon}>
           <LevelIcon level={level} color="#fff" size={64} />
         </View>
@@ -98,41 +230,120 @@ export default function PreviewScreen() {
                   {content}
                 </View>
               )}
+
+              {editingLayout && (
+                <>
+                  <View pointerEvents="none" style={[styles.safeAreaGuide, { top: 0, height: safeAreaTopPx }]} />
+                  <View
+                    pointerEvents="none"
+                    style={[
+                      styles.safeAreaGuide,
+                      { top: safeAreaBottomPx, height: PHONE_SCREEN_HEIGHT - safeAreaBottomPx },
+                    ]}
+                  />
+                </>
+              )}
+
+              {displayTodos.length > 0 && (
+                <View
+                  {...(editingLayout ? panResponder.panHandlers : {})}
+                  onLayout={onBlockLayout}
+                  style={[
+                    styles.todoBlockWrap,
+                    editingLayout && styles.todoBlockWrapEditing,
+                    { width: TODO_BLOCK_WIDTH_PX, left: blockLeftPx, top: blockTopPx },
+                  ]}
+                >
+                  <LockScreenTodoBlock
+                    items={displayTodos}
+                    fontScale={activeLayout.fontScale}
+                    containerWidth={PHONE_SCREEN_WIDTH}
+                  />
+                </View>
+              )}
+
               <View style={styles.notch} />
             </View>
           </View>
 
-          <Text style={styles.caption}>
-            現在のレベル：<Text style={{ color: info.hex }}>レベル{level}・{info.name}</Text>
-            {overrideLevel === null ? '（本日の自動判定）' : '（プレビュー中）'}
-          </Text>
-
-          <View style={styles.switcher}>
-            <Pressable
-              style={[styles.switchBtn, overrideLevel === null && styles.switchBtnActive]}
-              onPress={() => setOverrideLevel(null)}
-            >
-              <Text style={[styles.switchText, overrideLevel === null && styles.switchTextActive]}>
-                自動（本日）
+          {editingLayout ? (
+            <>
+              <Text style={styles.editHint}>
+                ドラッグで位置を調整できます。上下の網掛け部分には時計やアイコンが重なるため配置できません。
               </Text>
-            </Pressable>
-            {LEVEL_LIST.map((lvl) => (
-              <Pressable
-                key={lvl}
-                style={[styles.switchBtn, overrideLevel === lvl && styles.switchBtnActive]}
-                onPress={() => setOverrideLevel(lvl)}
-              >
-                <Text style={[styles.switchText, overrideLevel === lvl && styles.switchTextActive]}>
-                  Lv{lvl}
-                </Text>
+              <View style={styles.fontScaleRow}>
+                <Text style={styles.fontScaleLabel}>文字の大きさ</Text>
+                {FONT_SCALE_ORDER.map((scale) => (
+                  <Pressable
+                    key={scale}
+                    style={[styles.fontScaleBtn, draftLayout.fontScale === scale && styles.fontScaleBtnActive]}
+                    onPress={() => changeFontScale(scale)}
+                  >
+                    <Text
+                      style={[
+                        styles.fontScaleBtnText,
+                        draftLayout.fontScale === scale && styles.fontScaleBtnTextActive,
+                      ]}
+                    >
+                      {FONT_SCALE_LABEL[scale]}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <View style={styles.editButtonRow}>
+                <Pressable style={styles.cancelBtn} onPress={cancelEditing} disabled={saving}>
+                  <Text style={styles.cancelBtnText}>キャンセル</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.confirmBtn, saving && { opacity: 0.6 }]}
+                  onPress={confirmEditing}
+                  disabled={saving}
+                >
+                  <Text style={styles.confirmBtnText}>{saving ? '保存中…' : '保存する'}</Text>
+                </Pressable>
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={styles.caption}>
+                現在のレベル：<Text style={{ color: info.hex }}>レベル{level}・{info.name}</Text>
+                {overrideLevel === null ? '（本日の自動判定）' : '（プレビュー中）'}
+              </Text>
+
+              <View style={styles.switcher}>
+                <Pressable
+                  style={[styles.switchBtn, overrideLevel === null && styles.switchBtnActive]}
+                  onPress={() => setOverrideLevel(null)}
+                >
+                  <Text style={[styles.switchText, overrideLevel === null && styles.switchTextActive]}>
+                    自動（本日）
+                  </Text>
+                </Pressable>
+                {LEVEL_LIST.map((lvl) => (
+                  <Pressable
+                    key={lvl}
+                    style={[styles.switchBtn, overrideLevel === lvl && styles.switchBtnActive]}
+                    onPress={() => setOverrideLevel(lvl)}
+                  >
+                    <Text style={[styles.switchText, overrideLevel === lvl && styles.switchTextActive]}>
+                      Lv{lvl}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Pressable style={styles.editEntryBtn} onPress={startEditing}>
+                <Text style={styles.editEntryBtnText}>TODOの表示位置・大きさを編集</Text>
               </Pressable>
-            ))}
-          </View>
+            </>
+          )}
         </View>
 
-        <Text style={styles.saveHint}>
-          見た目の確認用画面です。写真の変更・更新は「設定」タブの各レベルにある「使用する写真を更新」から行えます。
-        </Text>
+        {!editingLayout && (
+          <Text style={styles.saveHint}>
+            見た目の確認用画面です。写真の変更・更新は「設定」タブの各レベルにある「使用する写真を更新」から行えます。
+          </Text>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -207,4 +418,82 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 30,
   },
+
+  todoBlockWrap: {
+    position: 'absolute',
+    padding: 4,
+  },
+  todoBlockWrapEditing: {
+    borderWidth: 1.5,
+    borderColor: colors.l1,
+    borderRadius: 10,
+    backgroundColor: 'rgba(127,191,160,0.12)',
+  },
+  safeAreaGuide: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(224,89,107,0.18)',
+  },
+
+  editEntryBtn: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: colors.l1,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+  },
+  editEntryBtnText: { color: colors.l1, fontSize: 12, fontWeight: '700' },
+
+  editHint: {
+    color: colors.inkMuted,
+    fontSize: 11,
+    marginTop: 14,
+    textAlign: 'center',
+    lineHeight: 16,
+    paddingHorizontal: 24,
+    maxWidth: 320,
+  },
+  fontScaleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 14,
+  },
+  fontScaleLabel: { color: colors.inkMuted, fontSize: 11, marginRight: 4 },
+  fontScaleBtn: {
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: colors.bgPanel,
+    borderRadius: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+  },
+  fontScaleBtnActive: { borderColor: colors.l1, backgroundColor: colors.l1Soft },
+  fontScaleBtnText: { color: colors.inkMuted, fontSize: 12 },
+  fontScaleBtnTextActive: { color: colors.l1, fontWeight: '700' },
+
+  editButtonRow: { flexDirection: 'row', gap: 12, marginTop: 18, width: '100%', maxWidth: 320 },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.hairline,
+  },
+  cancelBtnText: { color: colors.inkMuted, fontSize: 13 },
+  confirmBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.l1,
+    backgroundColor: colors.l1Soft,
+  },
+  confirmBtnText: { color: colors.l1, fontSize: 13, fontWeight: '700' },
 });
