@@ -75,15 +75,20 @@ export const TODO_BLOCK_WIDTH_RATIO = 0.78;
 
 export function clampTodoLayout(
   layout: TodoLockScreenLayout,
-  // ブロックの実測高さ（画面全体に対する%）。渡した場合、下端が安全エリアからはみ出さないよう
+  // ブロックの実測高さ（画面全体に対する%）。渡した場合、下端が画面からはみ出さないよう
   // 上限をさらに引き下げる（アンカーが上端固定のため）。
   blockHeightPercent = 0
 ): TodoLockScreenLayout {
-  const maxY = Math.max(SAFE_AREA_TOP_PERCENT, SAFE_AREA_BOTTOM_PERCENT - blockHeightPercent);
+  // 上下の網掛け（時計・日付やウィジェット等が来る可能性のある領域）は、あくまで
+  // 「重なる可能性がある」という目安の表示であって、そこへの配置自体を禁止するものではない
+  // （実際どう重なるかは端末・ロック画面の設定次第で、重ならないケースも多いため）。
+  // そのため配置可能範囲は画面全体（0-100%）とし、ブロックが完全に画面外へはみ出す
+  // ことだけを防ぐ。
+  const maxY = Math.max(0, 100 - blockHeightPercent);
   return {
     ...layout,
     xPercent: Math.max(0, Math.min(100, layout.xPercent)),
-    yPercent: Math.max(SAFE_AREA_TOP_PERCENT, Math.min(maxY, layout.yPercent)),
+    yPercent: Math.max(0, Math.min(maxY, layout.yPercent)),
     fontSizeRatio: Math.max(MIN_FONT_SIZE_RATIO, Math.min(MAX_FONT_SIZE_RATIO, layout.fontSizeRatio)),
     panelOpacity: Math.max(0, Math.min(1, layout.panelOpacity)),
   };

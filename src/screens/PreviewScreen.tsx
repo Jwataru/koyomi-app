@@ -301,7 +301,7 @@ export default function PreviewScreen() {
           {editingLayout ? (
             <View style={styles.editPanel}>
               <Text style={styles.editHint}>
-                ドラッグで位置を調整できます。上下の網掛け部分には時計やアイコンが重なるため配置できません。
+                ドラッグで位置を調整できます。上下の網掛け部分は時計やウィジェットなどと重なる可能性がある目安の範囲です（配置は可能です）。
               </Text>
 
               <Text style={styles.editSectionLabel}>文字の大きさ（目安 {fontSizePtEstimate}pt）</Text>
@@ -311,7 +311,14 @@ export default function PreviewScreen() {
                 maximumValue={MAX_FONT_SIZE_RATIO}
                 value={draftLayout.fontSizeRatio}
                 onValueChange={(v) => updateDraft({ fontSizeRatio: v })}
+                onSlidingStart={() => setScrollLocked(true)}
+                onSlidingComplete={(v) => {
+                  updateDraft({ fontSizeRatio: v });
+                  setScrollLocked(false);
+                }}
                 minimumTrackTintColor={colors.l1}
+                maximumTrackTintColor={colors.hairline}
+                thumbTintColor={colors.l1}
               />
 
               <Text style={styles.editSectionLabel}>フォント</Text>
@@ -384,7 +391,14 @@ export default function PreviewScreen() {
                     maximumValue={0.9}
                     value={draftLayout.panelOpacity}
                     onValueChange={(v) => updateDraft({ panelOpacity: v })}
+                    onSlidingStart={() => setScrollLocked(true)}
+                    onSlidingComplete={(v) => {
+                      updateDraft({ panelOpacity: v });
+                      setScrollLocked(false);
+                    }}
                     minimumTrackTintColor={colors.l1}
+                    maximumTrackTintColor={colors.hairline}
+                    thumbTintColor={colors.l1}
                   />
                 </>
               )}
