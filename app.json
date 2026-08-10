@@ -39,7 +39,8 @@
       "expo-notifications",
       "expo-iap",
       "./plugins/withoutPushEntitlement",
-      "./plugins/withStoreKitConfig"
+      "./plugins/withStoreKitConfig",
+      "@bacons/apple-targets"
     ]
   }
 }

@@ -30,6 +30,7 @@ import {
 } from '../data/storage';
 import LevelIcon from '../components/LevelIcon';
 import { getTrialStatus, TrialStatus } from '../logic/trial';
+import { syncTodosToWidget } from '../services/widgetSync';
 
 function makeTodoId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -242,6 +243,7 @@ export default function TodayScreen() {
       };
       await saveLockScreenTodos(snapshot);
       setLockScreenSnapshot(snapshot);
+      await syncTodosToWidget(snapshot);
     } finally {
       setReflecting(false);
     }
