@@ -159,7 +159,7 @@ export const saveTrialNotificationIds = (v: string[]) => setJSON(KEYS.trialNotif
 // どの写真か」を覚えておくためのもの。ここが今回のリクエストと一致していれば、
 // 実質的に何も変わっていないので Photos への無駄な書き込みをスキップする
 // （※ 古い写真の削除はしない。削除は確認ダイアログが必ず出てしまい紛らわしいため撤去した）。
-export type WallpaperLastApplied = { level: LevelKey; uri: string | null } | null;
+export type WallpaperLastApplied = { level: LevelKey; uri: string | null; todoSignature?: string } | null;
 export const loadWallpaperLastApplied = () => getJSON<WallpaperLastApplied>(KEYS.wallpaperLastApplied, null);
 export const saveWallpaperLastApplied = (v: WallpaperLastApplied) => setJSON(KEYS.wallpaperLastApplied, v);
 

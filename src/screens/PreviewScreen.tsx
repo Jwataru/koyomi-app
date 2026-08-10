@@ -5,11 +5,14 @@ import {
   Image,
   StyleSheet,
   SafeAreaView,
+  ScrollView,
   Pressable,
   Dimensions,
   PanResponder,
   LayoutChangeEvent,
+  Alert,
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, LEVELS, LevelKey } from '../theme/theme';
 import { calcLevel, toDate } from '../logic/cycle';
@@ -24,15 +27,20 @@ import {
   LockScreenTodosSnapshot,
 } from '../data/storage';
 import { getTrialStatus, TrialStatus } from '../logic/trial';
+import { regenerateAndApplyWallpaper } from '../services/wallpaperEngine';
 import LevelIcon from '../components/LevelIcon';
 import LockScreenTodoBlock from '../components/LockScreenTodoBlock';
 import {
   TodoLockScreenLayout,
-  TodoFontScale,
+  TodoFontFamily,
   DEFAULT_TODO_LAYOUT,
   DUMMY_PREVIEW_TODOS,
-  FONT_SCALE_ORDER,
-  FONT_SCALE_LABEL,
+  FONT_FAMILY_ORDER,
+  FONT_FAMILY_LABEL,
+  MIN_FONT_SIZE_RATIO,
+  MAX_FONT_SIZE_RATIO,
+  TEXT_COLOR_PRESETS,
+  PANEL_COLOR_PRESETS,
   TODO_BLOCK_WIDTH_RATIO,
   SAFE_AREA_TOP_PERCENT,
   SAFE_AREA_BOTTOM_PERCENT,
@@ -51,6 +59,8 @@ const PHONE_SCREEN_WIDTH = PHONE_SHELL_WIDTH - PHONE_PADDING * 2;
 const PHONE_SCREEN_HEIGHT = PHONE_SCREEN_WIDTH * (DEVICE_H / DEVICE_W);
 const PHONE_SHELL_HEIGHT = PHONE_SCREEN_HEIGHT + PHONE_PADDING * 2;
 const TODO_BLOCK_WIDTH_PX = PHONE_SCREEN_WIDTH * TODO_BLOCK_WIDTH_RATIO;
+// フォントサイズのスライダー表示用：実機の目安の画面幅（iPhone標準サイズ相当）でpt換算する
+const FONT_SIZE_REFERENCE_WIDTH = 390;
 
 function formatTime(d: Date) {
   const h = String(d.getHours()).padStart(2, '0');
@@ -68,12 +78,14 @@ export default function PreviewScreen() {
   const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
   const [lockTodos, setLockTodos] = useState<LockScreenTodosSnapshot | null>(null);
 
-  // 保存済みのTODO表示レイアウトと、編集中のドラフト（キャンセルで破棄できるように分けている）
+  // 保存済みのTODO表示レイアウト（位置・文字サイズ・フォント・色・パネル）と、
+  // 編集中のドラフト（キャンセルで破棄できるように分けている）
   const [todoLayout, setTodoLayout] = useState<TodoLockScreenLayout>(DEFAULT_TODO_LAYOUT);
   const [draftLayout, setDraftLayout] = useState<TodoLockScreenLayout>(DEFAULT_TODO_LAYOUT);
   const [editingLayout, setEditingLayout] = useState(false);
   const [saving, setSaving] = useState(false);
   const [blockHeightPx, setBlockHeightPx] = useState(0);
+  const [scrollLocked, setScrollLocked] = useState(false);
 
   const editingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
@@ -111,6 +123,7 @@ export default function PreviewScreen() {
       onMoveShouldSetPanResponder: (_e, g) =>
         editingRef.current && (Math.abs(g.dx) > 2 || Math.abs(g.dy) > 2),
       onPanResponderGrant: () => {
+        setScrollLocked(true);
         setDraftLayout((prev) => {
           dragStartRef.current = { x: prev.xPercent, y: prev.yPercent };
           return prev;
@@ -130,6 +143,8 @@ export default function PreviewScreen() {
           )
         );
       },
+      onPanResponderRelease: () => setScrollLocked(false),
+      onPanResponderTerminate: () => setScrollLocked(false),
     })
   ).current;
 
@@ -155,13 +170,19 @@ export default function PreviewScreen() {
       setTodoLayout(clamped);
       setDraftLayout(clamped);
       setEditingLayout(false);
+      // 見た目・位置の変更をその場で実際のロック画面まで反映する
+      // （写真の更新や周期の変更と同じ「設定を変えたら即反映」の流れに揃える）。
+      const result = await regenerateAndApplyWallpaper();
+      if (!result.success) {
+        Alert.alert('ロック画面への反映に失敗しました', result.message);
+      }
     } finally {
       setSaving(false);
     }
   }
 
-  function changeFontScale(scale: TodoFontScale) {
-    setDraftLayout((prev) => clampTodoLayout({ ...prev, fontScale: scale }, blockHeightPercent));
+  function updateDraft(patch: Partial<TodoLockScreenLayout>) {
+    setDraftLayout((prev) => clampTodoLayout({ ...prev, ...patch }, blockHeightPercent));
   }
 
   const autoLevel: LevelKey =
@@ -184,6 +205,7 @@ export default function PreviewScreen() {
   const blockTopPx = (activeLayout.yPercent / 100) * PHONE_SCREEN_HEIGHT;
   const safeAreaTopPx = (SAFE_AREA_TOP_PERCENT / 100) * PHONE_SCREEN_HEIGHT;
   const safeAreaBottomPx = (SAFE_AREA_BOTTOM_PERCENT / 100) * PHONE_SCREEN_HEIGHT;
+  const fontSizePtEstimate = Math.round(draftLayout.fontSizeRatio * FONT_SIZE_REFERENCE_WIDTH);
 
   const content = (
     <View style={styles.lockContent}>
@@ -205,7 +227,12 @@ export default function PreviewScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.wrap}>
+      <ScrollView
+        contentContainerStyle={styles.wrap}
+        scrollEnabled={!scrollLocked}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {locked && (
           <View style={styles.lockedBanner}>
             <Text style={styles.lockedBannerText}>
@@ -256,8 +283,13 @@ export default function PreviewScreen() {
                 >
                   <LockScreenTodoBlock
                     items={displayTodos}
-                    fontScale={activeLayout.fontScale}
+                    fontSizeRatio={activeLayout.fontSizeRatio}
                     containerWidth={PHONE_SCREEN_WIDTH}
+                    fontFamily={activeLayout.fontFamily}
+                    textColor={activeLayout.textColor}
+                    panelEnabled={activeLayout.panelEnabled}
+                    panelColor={activeLayout.panelColor}
+                    panelOpacity={activeLayout.panelOpacity}
                   />
                 </View>
               )}
@@ -267,29 +299,96 @@ export default function PreviewScreen() {
           </View>
 
           {editingLayout ? (
-            <>
+            <View style={styles.editPanel}>
               <Text style={styles.editHint}>
                 ドラッグで位置を調整できます。上下の網掛け部分には時計やアイコンが重なるため配置できません。
               </Text>
-              <View style={styles.fontScaleRow}>
-                <Text style={styles.fontScaleLabel}>文字の大きさ</Text>
-                {FONT_SCALE_ORDER.map((scale) => (
+
+              <Text style={styles.editSectionLabel}>文字の大きさ（目安 {fontSizePtEstimate}pt）</Text>
+              <Slider
+                style={styles.adjustSlider}
+                minimumValue={MIN_FONT_SIZE_RATIO}
+                maximumValue={MAX_FONT_SIZE_RATIO}
+                value={draftLayout.fontSizeRatio}
+                onValueChange={(v) => updateDraft({ fontSizeRatio: v })}
+                minimumTrackTintColor={colors.l1}
+              />
+
+              <Text style={styles.editSectionLabel}>フォント</Text>
+              <View style={styles.pillRow}>
+                {FONT_FAMILY_ORDER.map((family) => (
                   <Pressable
-                    key={scale}
-                    style={[styles.fontScaleBtn, draftLayout.fontScale === scale && styles.fontScaleBtnActive]}
-                    onPress={() => changeFontScale(scale)}
+                    key={family}
+                    style={[styles.pillBtn, draftLayout.fontFamily === family && styles.pillBtnActive]}
+                    onPress={() => updateDraft({ fontFamily: family as TodoFontFamily })}
                   >
                     <Text
-                      style={[
-                        styles.fontScaleBtnText,
-                        draftLayout.fontScale === scale && styles.fontScaleBtnTextActive,
-                      ]}
+                      style={[styles.pillBtnText, draftLayout.fontFamily === family && styles.pillBtnTextActive]}
                     >
-                      {FONT_SCALE_LABEL[scale]}
+                      {FONT_FAMILY_LABEL[family]}
                     </Text>
                   </Pressable>
                 ))}
               </View>
+
+              <Text style={styles.editSectionLabel}>文字の色</Text>
+              <View style={styles.swatchRow}>
+                {TEXT_COLOR_PRESETS.map((c) => (
+                  <Pressable
+                    key={c}
+                    onPress={() => updateDraft({ textColor: c })}
+                    style={[
+                      styles.swatch,
+                      { backgroundColor: c },
+                      draftLayout.textColor === c && styles.swatchActive,
+                    ]}
+                  />
+                ))}
+              </View>
+
+              <View style={styles.panelToggleRow}>
+                <Text style={styles.editSectionLabel}>背面パネル</Text>
+                <Pressable
+                  style={[styles.togglePill, draftLayout.panelEnabled && styles.togglePillActive]}
+                  onPress={() => updateDraft({ panelEnabled: !draftLayout.panelEnabled })}
+                >
+                  <Text style={[styles.togglePillText, draftLayout.panelEnabled && styles.togglePillTextActive]}>
+                    {draftLayout.panelEnabled ? 'ON' : 'OFF'}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {draftLayout.panelEnabled && (
+                <>
+                  <Text style={styles.editSectionLabel}>パネルの色</Text>
+                  <View style={styles.swatchRow}>
+                    {PANEL_COLOR_PRESETS.map((c) => (
+                      <Pressable
+                        key={c}
+                        onPress={() => updateDraft({ panelColor: c })}
+                        style={[
+                          styles.swatch,
+                          { backgroundColor: c },
+                          draftLayout.panelColor === c && styles.swatchActive,
+                        ]}
+                      />
+                    ))}
+                  </View>
+
+                  <Text style={styles.editSectionLabel}>
+                    パネルの濃さ（{Math.round(draftLayout.panelOpacity * 100)}%）
+                  </Text>
+                  <Slider
+                    style={styles.adjustSlider}
+                    minimumValue={0.05}
+                    maximumValue={0.9}
+                    value={draftLayout.panelOpacity}
+                    onValueChange={(v) => updateDraft({ panelOpacity: v })}
+                    minimumTrackTintColor={colors.l1}
+                  />
+                </>
+              )}
+
               <View style={styles.editButtonRow}>
                 <Pressable style={styles.cancelBtn} onPress={cancelEditing} disabled={saving}>
                   <Text style={styles.cancelBtnText}>キャンセル</Text>
@@ -299,10 +398,10 @@ export default function PreviewScreen() {
                   onPress={confirmEditing}
                   disabled={saving}
                 >
-                  <Text style={styles.confirmBtnText}>{saving ? '保存中…' : '保存する'}</Text>
+                  <Text style={styles.confirmBtnText}>{saving ? '反映中…' : '保存してロック画面に反映'}</Text>
                 </Pressable>
               </View>
-            </>
+            </View>
           ) : (
             <>
               <Text style={styles.caption}>
@@ -333,7 +432,7 @@ export default function PreviewScreen() {
               </View>
 
               <Pressable style={styles.editEntryBtn} onPress={startEditing}>
-                <Text style={styles.editEntryBtnText}>TODOの表示位置・大きさを編集</Text>
+                <Text style={styles.editEntryBtnText}>TODOの表示位置・見た目を編集</Text>
               </Pressable>
             </>
           )}
@@ -344,14 +443,14 @@ export default function PreviewScreen() {
             見た目の確認用画面です。写真の変更・更新は「設定」タブの各レベルにある「使用する写真を更新」から行えます。
           </Text>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bgDeep },
-  wrap: { flex: 1, alignItems: 'center', paddingTop: 24 },
+  wrap: { flexGrow: 1, alignItems: 'center', paddingTop: 24, paddingBottom: 48 },
   lockedBanner: {
     width: '100%',
     maxWidth: 320,
@@ -446,23 +545,22 @@ const styles = StyleSheet.create({
   },
   editEntryBtnText: { color: colors.l1, fontSize: 12, fontWeight: '700' },
 
+  editPanel: { width: '100%', maxWidth: 340, paddingHorizontal: 20 },
   editHint: {
     color: colors.inkMuted,
     fontSize: 11,
     marginTop: 14,
     textAlign: 'center',
     lineHeight: 16,
-    paddingHorizontal: 24,
-    maxWidth: 320,
   },
-  fontScaleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  editSectionLabel: {
+    color: colors.inkMuted,
+    fontSize: 11,
     marginTop: 14,
+    marginBottom: 6,
   },
-  fontScaleLabel: { color: colors.inkMuted, fontSize: 11, marginRight: 4 },
-  fontScaleBtn: {
+  pillRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  pillBtn: {
     borderWidth: 1,
     borderColor: colors.hairline,
     backgroundColor: colors.bgPanel,
@@ -470,11 +568,36 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
-  fontScaleBtnActive: { borderColor: colors.l1, backgroundColor: colors.l1Soft },
-  fontScaleBtnText: { color: colors.inkMuted, fontSize: 12 },
-  fontScaleBtnTextActive: { color: colors.l1, fontWeight: '700' },
+  pillBtnActive: { borderColor: colors.l1, backgroundColor: colors.l1Soft },
+  pillBtnText: { color: colors.inkMuted, fontSize: 12 },
+  pillBtnTextActive: { color: colors.l1, fontWeight: '700' },
 
-  editButtonRow: { flexDirection: 'row', gap: 12, marginTop: 18, width: '100%', maxWidth: 320 },
+  swatchRow: { flexDirection: 'row', gap: 10 },
+  swatch: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+  },
+  swatchActive: { borderWidth: 2.5, borderColor: colors.l1 },
+
+  panelToggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  togglePill: {
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: colors.bgPanel,
+    borderRadius: 14,
+    paddingVertical: 5,
+    paddingHorizontal: 16,
+  },
+  togglePillActive: { borderColor: colors.l1, backgroundColor: colors.l1Soft },
+  togglePillText: { color: colors.inkMuted, fontSize: 12, fontWeight: '600' },
+  togglePillTextActive: { color: colors.l1 },
+
+  adjustSlider: { width: '100%', height: 32 },
+
+  editButtonRow: { flexDirection: 'row', gap: 12, marginTop: 20, width: '100%' },
   cancelBtn: {
     flex: 1,
     paddingVertical: 12,

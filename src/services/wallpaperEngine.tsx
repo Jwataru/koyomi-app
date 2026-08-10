@@ -129,11 +129,17 @@ export default function WallpaperEngine() {
         });
 
         // 「今アルバムに入っている一番新しい写真」がすでに今回適用したい
-        // レベル・写真と同じなら、実質何も変わっていない。
+        // レベル・写真・TODOの内容/位置/見た目と同じなら、実質何も変わっていない。
         // その場合は無駄なPhotosへの書き込みは行わず、ショートカットの再実行だけで済ませる。
+        // ※ 写真が同じでもTODOの文言・位置・文字色などだけ変わるケースがあるため、
+        //   uri/levelだけでなくTODO側の内容もシグネチャ化して比較する。
+        const todoSignature = JSON.stringify({ items: lockTodos?.items ?? [], layout });
         const lastApplied = await loadWallpaperLastApplied();
         const nothingChanged =
-          !!lastApplied && lastApplied.level === lv && lastApplied.uri === (nextPhoto?.uri ?? null);
+          !!lastApplied &&
+          lastApplied.level === lv &&
+          lastApplied.uri === (nextPhoto?.uri ?? null) &&
+          lastApplied.todoSignature === todoSignature;
 
         if (nothingChanged) {
           return {
@@ -200,7 +206,7 @@ export default function WallpaperEngine() {
         // ※ 以前は同じレベルの古い画像を削除して「上書き」にしていたが、iOSの仕様上
         //   削除には必ずユーザー確認ダイアログが出て紛らわしいため撤去した。
         //   そのため「koyomi壁紙」アルバムは保存するたびに増えていく（手動で整理が必要）。
-        await saveWallpaperLastApplied({ level: lv, uri: nextPhoto?.uri ?? null });
+        await saveWallpaperLastApplied({ level: lv, uri: nextPhoto?.uri ?? null, todoSignature });
 
         return {
           success: true,
@@ -261,7 +267,16 @@ export default function WallpaperEngine() {
                 top: todoBlockTopPx,
               }}
             >
-              <LockScreenTodoBlock items={todoItems} fontScale={todoLayout.fontScale} containerWidth={width} />
+              <LockScreenTodoBlock
+                items={todoItems}
+                fontSizeRatio={todoLayout.fontSizeRatio}
+                containerWidth={width}
+                fontFamily={todoLayout.fontFamily}
+                textColor={todoLayout.textColor}
+                panelEnabled={todoLayout.panelEnabled}
+                panelColor={todoLayout.panelColor}
+                panelOpacity={todoLayout.panelOpacity}
+              />
             </View>
           )}
         </View>
