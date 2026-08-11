@@ -101,6 +101,9 @@ struct TodoWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: TodoWidgetProvider()) { entry in
             TodoWidgetView(entry: entry)
+                .containerBackground(for: .widget) {
+                    Color.clear
+                }
         }
         .configurationDisplayName("koyomi TODO")
         .description("ロック画面にkoyomiのTODOを表示します。")
