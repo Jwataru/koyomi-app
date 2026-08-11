@@ -8,7 +8,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { LevelKey } from '../theme/theme';
-import { DEFAULT_TODO_LAYOUT, TodoLockScreenLayout, clampTodoLayout } from '../logic/todoLayout';
 
 const KEYS = {
   cycleSettings: 'koyomi:cycleSettings',
@@ -19,7 +18,6 @@ const KEYS = {
   wallpaperLastApplied: 'koyomi:wallpaperLastApplied',
   todos: 'koyomi:todos',
   lockScreenTodos: 'koyomi:lockScreenTodos',
-  todoLockScreenLayout: 'koyomi:todoLockScreenLayout',
   firstLaunchAt: 'koyomi:firstLaunchAt',
   proUnlocked: 'koyomi:proUnlocked',
   trialNotificationIds: 'koyomi:trialNotificationIds',
@@ -128,18 +126,11 @@ export async function loadTodos(): Promise<TodoItem[]> {
 }
 export const saveTodos = (v: TodoItem[]) => setJSON(KEYS.todos, v);
 
+// ウィジェット（TodoWidget）に反映済みのTODOスナップショット。
+// wallpaperEngine 側では使わず、widgetSync.ts がロック画面ウィジェットへ渡すためだけに使う。
 export const loadLockScreenTodos = () =>
   getJSON(KEYS.lockScreenTodos, null as LockScreenTodosSnapshot | null);
 export const saveLockScreenTodos = (v: LockScreenTodosSnapshot) => setJSON(KEYS.lockScreenTodos, v);
-
-// ロック画面上でTODOブロックをどこに・どのくらいの大きさで表示するかの希望値。
-// プレビュー画面で調整し、wallpaperEngineの実際の壁紙描画にもそのまま使う。
-export async function loadTodoLockScreenLayout(): Promise<TodoLockScreenLayout> {
-  const raw = await getJSON(KEYS.todoLockScreenLayout, DEFAULT_TODO_LAYOUT);
-  return clampTodoLayout({ ...DEFAULT_TODO_LAYOUT, ...raw });
-}
-export const saveTodoLockScreenLayout = (v: TodoLockScreenLayout) =>
-  setJSON(KEYS.todoLockScreenLayout, v);
 
 // 無料期間の起算日（ISO文字列）。アプリの初回起動時に一度だけ書き込む。
 export const loadFirstLaunchAt = () => getJSON(KEYS.firstLaunchAt, null as string | null);
@@ -159,7 +150,7 @@ export const saveTrialNotificationIds = (v: string[]) => setJSON(KEYS.trialNotif
 // どの写真か」を覚えておくためのもの。ここが今回のリクエストと一致していれば、
 // 実質的に何も変わっていないので Photos への無駄な書き込みをスキップする
 // （※ 古い写真の削除はしない。削除は確認ダイアログが必ず出てしまい紛らわしいため撤去した）。
-export type WallpaperLastApplied = { level: LevelKey; uri: string | null; todoSignature?: string } | null;
+export type WallpaperLastApplied = { level: LevelKey; uri: string | null } | null;
 export const loadWallpaperLastApplied = () => getJSON<WallpaperLastApplied>(KEYS.wallpaperLastApplied, null);
 export const saveWallpaperLastApplied = (v: WallpaperLastApplied) => setJSON(KEYS.wallpaperLastApplied, v);
 

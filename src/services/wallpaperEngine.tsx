@@ -11,20 +11,15 @@ import ViewShot from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
 import { colors, LEVELS, LevelKey } from '../theme/theme';
 import LevelIcon from '../components/LevelIcon';
-import LockScreenTodoBlock from '../components/LockScreenTodoBlock';
 import {
   loadCycleSettings,
   loadPhotoMeta,
   PhotoMeta,
   loadWallpaperLastApplied,
   saveWallpaperLastApplied,
-  loadLockScreenTodos,
-  loadTodoLockScreenLayout,
-  LockScreenTodosSnapshot,
 } from '../data/storage';
 import { calcLevel, toDate } from '../logic/cycle';
 import { getTrialStatus } from '../logic/trial';
-import { DEFAULT_TODO_LAYOUT, TodoLockScreenLayout, TODO_BLOCK_WIDTH_RATIO } from '../logic/todoLayout';
 
 export const WALLPAPER_ALBUM_NAME = 'koyomi壁紙';
 
@@ -88,8 +83,6 @@ export default function WallpaperEngine() {
   const shotRef = useRef<ViewShot>(null);
   const [level, setLevel] = useState<LevelKey>(1);
   const [photo, setPhoto] = useState<PhotoMeta | null>(null);
-  const [todoSnapshot, setTodoSnapshot] = useState<LockScreenTodosSnapshot | null>(null);
-  const [todoLayout, setTodoLayout] = useState<TodoLockScreenLayout>(DEFAULT_TODO_LAYOUT);
 
   useEffect(() => {
     _requestSave = async (forcedLevel?: LevelKey): Promise<WallpaperSaveResult> => {
@@ -106,12 +99,7 @@ export default function WallpaperEngine() {
           };
         }
 
-        const [cycle, photoMeta, lockTodos, layout] = await Promise.all([
-          loadCycleSettings(),
-          loadPhotoMeta(),
-          loadLockScreenTodos(),
-          loadTodoLockScreenLayout(),
-        ]);
+        const [cycle, photoMeta] = await Promise.all([loadCycleSettings(), loadPhotoMeta()]);
         const autoLevel: LevelKey = cycle?.nextPeriodDate
           ? calcLevel(new Date(), toDate(cycle.nextPeriodDate), cycle.cycleLen)
           : 1;
@@ -123,23 +111,15 @@ export default function WallpaperEngine() {
         await new Promise<void>((resolve) => {
           setLevel(lv);
           setPhoto(nextPhoto);
-          setTodoSnapshot(lockTodos);
-          setTodoLayout(layout);
           setTimeout(resolve, 120);
         });
 
         // 「今アルバムに入っている一番新しい写真」がすでに今回適用したい
-        // レベル・写真・TODOの内容/位置/見た目と同じなら、実質何も変わっていない。
+        // レベル・写真と同じなら、実質何も変わっていない。
         // その場合は無駄なPhotosへの書き込みは行わず、ショートカットの再実行だけで済ませる。
-        // ※ 写真が同じでもTODOの文言・位置・文字色などだけ変わるケースがあるため、
-        //   uri/levelだけでなくTODO側の内容もシグネチャ化して比較する。
-        const todoSignature = JSON.stringify({ items: lockTodos?.items ?? [], layout });
         const lastApplied = await loadWallpaperLastApplied();
         const nothingChanged =
-          !!lastApplied &&
-          lastApplied.level === lv &&
-          lastApplied.uri === (nextPhoto?.uri ?? null) &&
-          lastApplied.todoSignature === todoSignature;
+          !!lastApplied && lastApplied.level === lv && lastApplied.uri === (nextPhoto?.uri ?? null);
 
         if (nothingChanged) {
           return {
@@ -206,7 +186,7 @@ export default function WallpaperEngine() {
         // ※ 以前は同じレベルの古い画像を削除して「上書き」にしていたが、iOSの仕様上
         //   削除には必ずユーザー確認ダイアログが出て紛らわしいため撤去した。
         //   そのため「koyomi壁紙」アルバムは保存するたびに増えていく（手動で整理が必要）。
-        await saveWallpaperLastApplied({ level: lv, uri: nextPhoto?.uri ?? null, todoSignature });
+        await saveWallpaperLastApplied({ level: lv, uri: nextPhoto?.uri ?? null });
 
         return {
           success: true,
@@ -229,16 +209,6 @@ export default function WallpaperEngine() {
 
   const info = LEVELS[level];
 
-  // プレビュー画面（PreviewScreen）と同じ座標系（0-100%）で位置を保存しているため、
-  // ここでは実機の画面サイズ（width/height）を基準にpxへ変換するだけでよい。
-  const todoBlockWidthPx = width * TODO_BLOCK_WIDTH_RATIO;
-  const todoBlockLeftPx = Math.max(
-    0,
-    Math.min(width - todoBlockWidthPx, (todoLayout.xPercent / 100) * width - todoBlockWidthPx / 2)
-  );
-  const todoBlockTopPx = (todoLayout.yPercent / 100) * height;
-  const todoItems = todoSnapshot?.items ?? [];
-
   return (
     // opacity ではなく画面外への配置で「非表示」にする。
     // opacity:0 の View は見た目通り透明な状態でキャプチャされてしまうため、
@@ -258,27 +228,6 @@ export default function WallpaperEngine() {
               </View>
             )}
           </View>
-          {todoItems.length > 0 && (
-            <View
-              style={{
-                position: 'absolute',
-                width: todoBlockWidthPx,
-                left: todoBlockLeftPx,
-                top: todoBlockTopPx,
-              }}
-            >
-              <LockScreenTodoBlock
-                items={todoItems}
-                fontSizeRatio={todoLayout.fontSizeRatio}
-                containerWidth={width}
-                fontFamily={todoLayout.fontFamily}
-                textColor={todoLayout.textColor}
-                panelEnabled={todoLayout.panelEnabled}
-                panelColor={todoLayout.panelColor}
-                panelOpacity={todoLayout.panelOpacity}
-              />
-            </View>
-          )}
         </View>
       </ViewShot>
     </View>
