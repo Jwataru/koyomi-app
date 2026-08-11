@@ -16,6 +16,9 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.yourname.koyomi",
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.com.yourname.koyomi"]
+      },
       "infoPlist": {
         "NSPhotoLibraryAddUsageDescription": "koyomiが生成した壁紙を専用アルバムに保存するために使用します。"
       }
