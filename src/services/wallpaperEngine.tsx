@@ -5,10 +5,17 @@
 // - 生成した画像は expo-media-library で「koyomi壁紙」という専用アルバムに保存する。
 // - プレビュー画面の「保存」ボタンからも、ショートカット経由のディープリンクからも、
 //   同じ requestWallpaperSave() を呼べば同じ結果になるようにしてある。
+//
+// ただし「写真未設定（＝アイコンのみのフォールバック表示）」のときだけは例外。
+// オフスクリーンキャンバス上のSVGアイコンをview-shotでキャプチャすると、
+// 実機のロック画面では中身が描画されない単色画像になってしまう問題があり、
+// このキャプチャ経路には現状頼れない。そのためこのケースに限り、キャプチャを
+// 一切行わず、あらかじめ用意した静止画（レベルごとのPNG）をそのまま使う。
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Image, StyleSheet, Dimensions, Linking, Platform } from 'react-native';
 import ViewShot from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
+import { Asset } from 'expo-asset';
 import { colors, LEVELS, LevelKey } from '../theme/theme';
 import LevelIcon from '../components/LevelIcon';
 import {
@@ -22,6 +29,15 @@ import { calcLevel, toDate } from '../logic/cycle';
 import { getTrialStatus } from '../logic/trial';
 
 export const WALLPAPER_ALBUM_NAME = 'koyomi壁紙';
+
+// 写真未設定時に使う、レベルごとのフォールバック壁紙（あらかじめ用意した静止画）。
+// オフスクリーンキャンバスのキャプチャに頼らずそのままアルバムへ保存する。
+const FALLBACK_WALLPAPERS: Record<LevelKey, number> = {
+  1: require('../assets/wallpaper-fallback/level1.png'),
+  2: require('../assets/wallpaper-fallback/level2.png'),
+  3: require('../assets/wallpaper-fallback/level3.png'),
+  4: require('../assets/wallpaper-fallback/level4.png'),
+};
 
 // オンボーディングの案内文どおりにユーザーがショートカットアプリに作成する想定の名前。
 // ユーザー側で別名にした場合は連携できなくなるため、設定画面でも同じ名前を案内する。
@@ -153,9 +169,23 @@ export default function WallpaperEngine() {
           };
         }
 
-        const uri = await shotRef.current?.capture?.();
+        // 写真が設定されていればこれまで通りオフスクリーンキャンバスをキャプチャする。
+        // 写真未設定（アイコンのみのフォールバック表示）のときは、キャプチャ経路を使わず
+        // 同梱のPNGをそのままローカルファイルとして解決して使う。
+        // ↓ どちらの経路を通ったかを結果メッセージに出すためのフラグ（デバッグ用）
+        const usedFallback = !nextPhoto?.uri;
+        let uri: string | null | undefined;
+        if (usedFallback) {
+          const fallbackAsset = Asset.fromModule(FALLBACK_WALLPAPERS[lv]);
+          await fallbackAsset.downloadAsync();
+          uri = fallbackAsset.localUri ?? fallbackAsset.uri;
+          console.log('[wallpaperEngine] fallback path used', { lv, uri });
+        } else {
+          uri = await shotRef.current?.capture?.();
+          console.log('[wallpaperEngine] capture path used', { lv, uri });
+        }
         if (!uri) {
-          return { success: false, message: '壁紙画像の生成に失敗しました。' };
+          return { success: false, message: `壁紙画像の生成に失敗しました。[経路:${usedFallback ? 'fallback' : 'capture'}]` };
         }
 
         let asset: MediaLibrary.Asset;
@@ -196,7 +226,7 @@ export default function WallpaperEngine() {
 
         return {
           success: true,
-          message: `「${WALLPAPER_ALBUM_NAME}」アルバムに保存しました（レベル${lv}・${LEVELS[lv].name}）`,
+          message: `「${WALLPAPER_ALBUM_NAME}」アルバムに保存しました（レベル${lv}・${LEVELS[lv].name}）[経路:${usedFallback ? 'fallback' : 'capture'} / uri:${uri.slice(-40)}]`,
           level: lv,
         };
       } catch (e) {
