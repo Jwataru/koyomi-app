@@ -62,6 +62,24 @@ const AUTOMATION_GUIDE_STEPS = [
   },
 ];
 
+// TODOのロック画面反映の設定手順のスクリーンショット。
+// 実機でTODO画面〜ロック画面ウィジェット追加までを操作しながら各ステップのスクショを撮り、
+// src/assets/todo-guide/ 配下に同じファイル名で配置してください（今は仮の空画像が入っています）。
+const TODO_GUIDE_STEPS = [
+  {
+    image: require('../assets/todo-guide/step-1.png'),
+    text: '「今日」画面のTODOで、ロック画面に出したい項目の「🔒 ロック画面OFF」をタップしてONにする',
+  },
+  {
+    image: require('../assets/todo-guide/step-2.png'),
+    text: '「🔒 ロック画面に反映」ボタンをタップする',
+  },
+  {
+    image: require('../assets/todo-guide/step-3.png'),
+    text: 'ロック画面を編集し、「koyomi TODO」ウィジェットを追加すれば完了',
+  },
+];
+
 type Platform_ = 'ios' | 'android';
 
 type Step = {
@@ -89,6 +107,18 @@ const OB_STEPS: Record<Platform_, Step[]> = {
       title: 'オートメーションを作成',
       desc:
         '毎日自動で切り替わるようにするには、最初に一度だけにショートカットアプリ側で「オートメーション」を作成する必要があります。下の手順どおりに設定してください。',
+    },
+    {
+      icon: '◐',
+      title: '設定を今すぐ\n試してみましょう',
+      desc:
+        '下のボタンでkoyomiの壁紙を今すぐ生成し、ロック画面に設定します。このあとロック画面を編集する手順があるので、先に一度反映しておくと迷いません。',
+    },
+    {
+      icon: '✎',
+      title: 'TODOもロック画面に\n表示できます',
+      desc:
+        'koyomiのTODOも、専用ウィジェットでロック画面に表示できます。下の手順どおりに設定してください（あとから設定画面でも変更できます）。',
     },
     {
       icon: '✓',
@@ -124,12 +154,17 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   const [step, setStep] = useState(0);
   const [batteryExempt, setBatteryExempt] = useState(true);
   const [applyingNow, setApplyingNow] = useState(false);
+  const [applyNowResult, setApplyNowResult] = useState<{ success: boolean; message: string } | null>(
+    null
+  );
   const [photoPermStatus, setPhotoPermStatus] = useState<
     'unknown' | 'granted' | 'limited' | 'denied'
   >('unknown');
   const [requestingPerm, setRequestingPerm] = useState(false);
   const [guidePage, setGuidePage] = useState(0);
   const [carouselWidth, setCarouselWidth] = useState(0);
+  const [todoGuidePage, setTodoGuidePage] = useState(0);
+  const [todoCarouselWidth, setTodoCarouselWidth] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -170,13 +205,16 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   const showPhotoPermission = platform === 'ios' && step === 0;
   const showAddShortcut = platform === 'ios' && step === 1;
   const showAutomationGuide = platform === 'ios' && step === 2;
-  const showConfirmButton = platform === 'ios' && isLast;
+  const showApplyNow = platform === 'ios' && step === 3;
+  const showTodoGuide = platform === 'ios' && step === 4;
 
   async function handleApplyNow() {
     if (applyingNow) return;
     setApplyingNow(true);
+    setApplyNowResult(null);
     try {
-      await regenerateAndApplyWallpaper();
+      const result = await regenerateAndApplyWallpaper(undefined, true);
+      setApplyNowResult(result);
     } finally {
       setApplyingNow(false);
     }
@@ -216,6 +254,12 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
     if (!carouselWidth) return;
     const page = Math.round(e.nativeEvent.contentOffset.x / carouselWidth);
     if (page !== guidePage) setGuidePage(page);
+  }
+
+  function handleTodoGuideScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    if (!todoCarouselWidth) return;
+    const page = Math.round(e.nativeEvent.contentOffset.x / todoCarouselWidth);
+    if (page !== todoGuidePage) setTodoGuidePage(page);
   }
 
   return (
@@ -329,7 +373,70 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
           </View>
         )}
 
-        {showConfirmButton}
+        {showApplyNow && (
+          <>
+            <Pressable
+              style={[styles.card, styles.confirmCard]}
+              onPress={handleApplyNow}
+              disabled={applyingNow}
+            >
+              {applyingNow ? (
+                <ActivityIndicator color={colors.l1} size="small" />
+              ) : (
+                <Text style={styles.cardLabel}>今すぐ反映して確認する</Text>
+              )}
+            </Pressable>
+            {applyNowResult && (
+              <Text
+                style={[
+                  styles.applyNowResultText,
+                  !applyNowResult.success && styles.applyNowResultTextError,
+                ]}
+              >
+                {applyNowResult.message}
+              </Text>
+            )}
+          </>
+        )}
+
+        {showTodoGuide && (
+          <View style={styles.guideCard}>
+            <View
+              style={styles.guideCarousel}
+              onLayout={(e) => setTodoCarouselWidth(e.nativeEvent.layout.width)}
+            >
+              {todoCarouselWidth > 0 && (
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  decelerationRate="fast"
+                  snapToInterval={todoCarouselWidth}
+                  snapToAlignment="start"
+                  disableIntervalMomentum
+                  onMomentumScrollEnd={handleTodoGuideScroll}
+                >
+                  {TODO_GUIDE_STEPS.map((s, i) => (
+                    <View key={i} style={[styles.guideSlide, { width: todoCarouselWidth }]}>
+                      <View style={styles.guideStepBadge}>
+                        <Text style={styles.guideStepBadgeText}>STEP {i + 1}</Text>
+                      </View>
+                      <View style={styles.guideImageFrame}>
+                        <Image source={s.image} style={styles.guideImage} resizeMode="cover" />
+                      </View>
+                      <Text style={styles.guideText}>{s.text}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+            <View style={styles.guideDots}>
+              {TODO_GUIDE_STEPS.map((_, i) => (
+                <View key={i} style={[styles.guideDot, i === todoGuidePage && styles.guideDotOn]} />
+              ))}
+            </View>
+          </View>
+        )}
 
         <View style={styles.dots}>
           {steps.map((_, i) => (
@@ -393,6 +500,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardLabel: { color: colors.ink, fontSize: 12 },
+  applyNowResultText: {
+    marginTop: 10,
+    fontSize: 12,
+    color: colors.inkMuted,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  applyNowResultTextError: {
+    color: '#e0645a',
+  },
   confirmCard: { justifyContent: 'center', alignItems: 'center' },
   guideCard: {
     width: '100%',

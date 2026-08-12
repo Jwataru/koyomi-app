@@ -54,11 +54,11 @@ let _requestSave: ((forcedLevel?: LevelKey) => Promise<WallpaperSaveResult>) | n
  * プレビュー画面で「このレベルの見た目を確認したい」ときに使う。
  * 省略時（ショートカット経由など）は実際の周期から自動判定したレベルを使う。
  */
-export function requestWallpaperSave(forcedLevel?: LevelKey): Promise<WallpaperSaveResult> {
+export function requestWallpaperSave(forcedLevel?: LevelKey, force = false): Promise<WallpaperSaveResult> {
   if (!_requestSave) {
     return Promise.resolve({ success: false, message: 'アプリの準備中です。少し待ってからもう一度お試しください。' });
   }
-  return _requestSave(forcedLevel);
+  return _requestSave(forcedLevel, force);
 }
 
 /**
@@ -67,8 +67,11 @@ export function requestWallpaperSave(forcedLevel?: LevelKey): Promise<WallpaperS
  * 1. 現在の周期から自動判定したレベルで壁紙を生成し、専用アルバムへ保存
  * 2. 保存に成功したら、ショートカットを実行して実際のロック画面まで切り替える
  */
-export async function regenerateAndApplyWallpaper(forcedLevel?: LevelKey): Promise<WallpaperSaveResult> {
-  const result = await requestWallpaperSave(forcedLevel);
+export async function regenerateAndApplyWallpaper(
+  forcedLevel?: LevelKey,
+  force = false
+): Promise<WallpaperSaveResult> {
+  const result = await requestWallpaperSave(forcedLevel, force);
   if (result.success) {
     runWallpaperShortcut();
   }
@@ -85,7 +88,7 @@ export default function WallpaperEngine() {
   const [photo, setPhoto] = useState<PhotoMeta | null>(null);
 
   useEffect(() => {
-    _requestSave = async (forcedLevel?: LevelKey): Promise<WallpaperSaveResult> => {
+    _requestSave = async (forcedLevel?: LevelKey, force = false): Promise<WallpaperSaveResult> => {
       try {
         // ロック画面自動連携は無料期間（60日）限定の機能。期限切れかつ未購入なら、
         // 壁紙生成・アルバム保存に進む前にここで止める。
@@ -119,7 +122,10 @@ export default function WallpaperEngine() {
         // その場合は無駄なPhotosへの書き込みは行わず、ショートカットの再実行だけで済ませる。
         const lastApplied = await loadWallpaperLastApplied();
         const nothingChanged =
-          !!lastApplied && lastApplied.level === lv && lastApplied.uri === (nextPhoto?.uri ?? null);
+          !force &&
+          !!lastApplied &&
+          lastApplied.level === lv &&
+          lastApplied.uri === (nextPhoto?.uri ?? null);
 
         if (nothingChanged) {
           return {
