@@ -235,7 +235,6 @@ export default function TodayScreen() {
   }
 
   async function reflectToLockScreen() {
-    console.log('[reflectToLockScreen] 開始', { desiredCount: desiredLockScreenTodos.length });
     setReflecting(true);
     try {
       const snapshot: LockScreenTodosSnapshot = {
@@ -243,10 +242,8 @@ export default function TodayScreen() {
         items: desiredLockScreenTodos,
       };
       await saveLockScreenTodos(snapshot);
-      console.log('[reflectToLockScreen] ローカル保存 完了');
       setLockScreenSnapshot(snapshot);
       await syncTodosToWidget(snapshot);
-      console.log('[reflectToLockScreen] ウィジェット同期 完了');
     } catch (e) {
       console.warn('[reflectToLockScreen] 失敗', e);
     } finally {

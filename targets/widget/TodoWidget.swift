@@ -74,18 +74,13 @@ struct TodoWidgetView: View {
         case .accessoryRectangular:
             // ロック画面の四角い枠に収まるファミリー（メインで使う想定）
             VStack(alignment: .leading, spacing: 2) {
-                if entry.items.isEmpty {
-                    Text("TODOはありません")
-                        .font(.caption2)
-                } else {
-                    ForEach(entry.items.prefix(3)) { item in
-                        HStack(alignment: .top, spacing: 4) {
-                            Text("•")
-                            Text(item.text)
-                                .lineLimit(1)
-                        }
-                        .font(.caption2)
+                ForEach(entry.items.prefix(3)) { item in
+                    HStack(alignment: .top, spacing: 4) {
+                        Text("•")
+                        Text(item.text)
+                            .lineLimit(1)
                     }
+                    .font(.caption2)
                 }
             }
 
