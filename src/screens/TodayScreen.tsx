@@ -365,7 +365,9 @@ export default function TodayScreen() {
               return (
                 <View key={todo.id} style={styles.todoCard}>
                   <View style={styles.todoRow}>
-                    <Pressable style={styles.checkbox} onPress={() => checkTodo(todo.id)} hitSlop={8} />
+                    <Pressable style={styles.checkbox} onPress={() => checkTodo(todo.id)} hitSlop={8}>
+                      <Text style={styles.checkboxMark}>✓</Text>
+                    </Pressable>
                     <Text style={styles.todoText}>{todo.text}</Text>
                     <Pressable onPress={() => deleteTodo(todo.id)} hitSlop={8}>
                       <Text style={styles.todoDel}>×</Text>
@@ -453,7 +455,7 @@ export default function TodayScreen() {
                       <Text style={styles.checkedTime}>{formatCheckedAt(todo.checkedAt)}</Text>
                     </View>
                     <Pressable onPress={() => deleteTodo(todo.id)} hitSlop={8}>
-                      <Text style={styles.todoDel}>×</Text>
+                      <Text style={styles.checkedDel}>🗑</Text>
                     </Pressable>
                   </View>
                 ))
@@ -642,21 +644,30 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   checkbox: {
-    width: 18,
-    height: 18,
-    borderRadius: 5,
+    width: 22,
+    height: 22,
+    borderRadius: 6,
     borderWidth: 1.5,
     borderColor: colors.inkMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxMark: {
+    color: colors.inkMuted,
+    fontSize: 13,
+    fontWeight: '700',
+    opacity: 0.45,
   },
   todoText: { flex: 1, color: colors.ink, fontSize: 13 },
   todoDel: { color: colors.inkMuted, fontSize: 17 },
+  checkedDel: { color: colors.inkMuted, fontSize: 14 },
   todoMetaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 6,
     marginTop: 8,
-    marginLeft: 28, // チェックボックス分インデント
+    marginLeft: 32, // チェックボックス分インデント
   },
   dueDatePill: {
     borderWidth: 1,
