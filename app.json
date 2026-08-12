@@ -41,6 +41,14 @@
       ],
       "expo-notifications",
       "expo-iap",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "17.0"
+          }
+        }
+      ],
       "./plugins/withoutPushEntitlement",
       "./plugins/withStoreKitConfig",
       "@bacons/apple-targets"
