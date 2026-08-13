@@ -81,13 +81,16 @@ const TODO_GUIDE_STEPS = [
     image: require('../assets/todo-guide/step-4.png'),
     text: 'ロック画面編集画面の「完了」で設定完了',
   },
+];
+
+const TODO_OPERATION_GUIDE_STEPS = [
   {
     image: require('../assets/todo-guide/step-5.png'),
-    text: '「今日」画面のTODOで、ロック画面に出したい項目の「🔒 ロック画面OFF」をタップしてONにする',
+    text: '「今日」画面のTODOで、ロック画面に出したい項目の\n「🔒 ロック画面OFF」をタップしてONにする',
   },
   {
     image: require('../assets/todo-guide/step-6.png'),
-    text: '「🔒 ロック画面に反映」ボタンをタップし、「反映済み」にする',
+    text: '「🔒 ロック画面に反映」ボタンをタップし、\n「反映済み」にする',
   },
   {
     image: require('../assets/todo-guide/step-7.png'),
@@ -131,9 +134,14 @@ const OB_STEPS: Record<Platform_, Step[]> = {
     },
     {
       icon: '✎',
-      title: 'TODOもロック画面に\n表示できます',
+      title: 'TODOもロック画面に\n表示させる設定をしよう',
       desc:
         'TODOをロック画面に表示できます。\n下の手順どおりに設定してください。',
+    },
+    {
+      icon: '✓',
+      title: 'TODOをロック画面に表示させよう',
+      desc: '実際にTODOがロック画面に表示されるか確認しましょう。\n(こちらのstepの確認は後でもok)',
     },
     {
       icon: '✓',
@@ -222,6 +230,7 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   const showAutomationGuide = platform === 'ios' && step === 2;
   const showApplyNow = platform === 'ios' && step === 3;
   const showTodoGuide = platform === 'ios' && step === 4;
+  const showTodoOperationGuide = platform === 'ios' && step === 5;
 
   async function handleApplyNow() {
     if (applyingNow) return;
@@ -447,6 +456,45 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
             </View>
             <View style={styles.guideDots}>
               {TODO_GUIDE_STEPS.map((_, i) => (
+                <View key={i} style={[styles.guideDot, i === todoGuidePage && styles.guideDotOn]} />
+              ))}
+            </View>
+          </View>
+        )}
+
+        {showTodoOperationGuide && (
+          <View style={styles.guideCard}>
+            <View
+              style={styles.guideCarousel}
+              onLayout={(e) => setTodoCarouselWidth(e.nativeEvent.layout.width)}
+            >
+              {todoCarouselWidth > 0 && (
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  decelerationRate="fast"
+                  snapToInterval={todoCarouselWidth}
+                  snapToAlignment="start"
+                  disableIntervalMomentum
+                  onMomentumScrollEnd={handleTodoGuideScroll}
+                >
+                  {TODO_OPERATION_GUIDE_STEPS.map((s, i) => (
+                    <View key={i} style={[styles.guideSlide, { width: todoCarouselWidth }]}>
+                      <View style={styles.guideStepBadge}>
+                        <Text style={styles.guideStepBadgeText}>STEP {i + 1}</Text>
+                      </View>
+                      <View style={styles.guideImageFrame}>
+                        <Image source={s.image} style={styles.guideImage} resizeMode="cover" />
+                      </View>
+                      <Text style={styles.guideText}>{s.text}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+            <View style={styles.guideDots}>
+              {TODO_OPERATION_GUIDE_STEPS.map((_, i) => (
                 <View key={i} style={[styles.guideDot, i === todoGuidePage && styles.guideDotOn]} />
               ))}
             </View>
