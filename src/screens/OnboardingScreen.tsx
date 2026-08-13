@@ -68,15 +68,31 @@ const AUTOMATION_GUIDE_STEPS = [
 const TODO_GUIDE_STEPS = [
   {
     image: require('../assets/todo-guide/step-1.png'),
-    text: '「今日」画面のTODOで、ロック画面に出したい項目の「🔒 ロック画面OFF」をタップしてONにする',
+    text: '今のロック画面（さきほど反映した壁紙）を長押しして編集画面に遷移し、「カスタマイズ」を選択',
   },
   {
     image: require('../assets/todo-guide/step-2.png'),
-    text: '「🔒 ロック画面に反映」ボタンをタップする',
+    text: 'ウィジェットを追加を押し、「koyomi」を選択',
   },
   {
     image: require('../assets/todo-guide/step-3.png'),
-    text: 'ロック画面を編集し、「koyomi TODO」ウィジェットを追加すれば完了',
+    text: 'グレーの部分をタップして追加',
+  },
+  {
+    image: require('../assets/todo-guide/step-4.png'),
+    text: 'ロック画面編集画面の「完了」で設定完了',
+  },
+  {
+    image: require('../assets/todo-guide/step-4.png'),
+    text: '「今日」画面のTODOで、ロック画面に出したい項目の「🔒 ロック画面OFF」をタップしてONにする',
+  },
+  {
+    image: require('../assets/todo-guide/step-4.png'),
+    text: '「🔒 ロック画面に反映」ボタンをタップする',
+  },
+  {
+    image: require('../assets/todo-guide/step-4.png'),
+    text: 'ロック画面でTODOが見れます',
   },
 ];
 

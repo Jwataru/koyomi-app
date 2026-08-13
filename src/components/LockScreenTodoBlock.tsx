@@ -55,14 +55,26 @@ export default function LockScreenTodoBlock({
             style={[
               styles.bullet,
               {
-                width: fontSize * 0.46,
-                height: fontSize * 0.46,
-                borderRadius: fontSize * 0.12,
-                marginTop: fontSize * 0.28,
+                width: fontSize * 0.52,
+                height: fontSize * 0.52,
+                borderRadius: fontSize * 0.52 * 0.32,
+                marginTop: fontSize * 0.22,
                 borderColor: textColor,
               },
             ]}
-          />
+          >
+            <View
+              style={{
+                width: fontSize * 0.52 * 0.5,
+                height: fontSize * 0.52 * 0.28,
+                marginTop: -fontSize * 0.52 * 0.06,
+                borderLeftWidth: Math.max(1, fontSize * 0.06),
+                borderBottomWidth: Math.max(1, fontSize * 0.06),
+                borderColor: hexToRgba(textColor, 0.55),
+                transform: [{ rotate: '-45deg' }],
+              }}
+            />
+          </View>
           <Text
             style={[
               styles.text,
@@ -96,6 +108,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     backgroundColor: 'transparent',
     marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   text: {
     flex: 1,
