@@ -2,9 +2,8 @@
 //
 // - 「無料期間」はロック画面自動連携（写真の壁紙化＋専用アルバム保存）にのみ適用される。
 //   今日・カレンダー・TODOなど他の画面は期限後もそのまま使える。
-// - 実際の課金（買い切りIAP）はまだ実装していないため、購入済みかどうかは
-//   ローカルの proUnlocked フラグで代用している。将来IAP処理を実装したら、
-//   購入成功時に debugSetProUnlocked(true) と同じ場所（saveProUnlocked）を呼べばよい。
+// - 購入済みかどうかはローカルの proUnlocked フラグで判定する。実際の買い切りIAPは
+//   services/iap.ts が担当し、購入・復元成功時に saveProUnlocked(true) を呼ぶ。
 import { loadFirstLaunchAt, saveFirstLaunchAt, loadProUnlocked, saveProUnlocked } from '../data/storage';
 
 export const TRIAL_DAYS = 60;

@@ -63,9 +63,7 @@ export type TodoItem = {
 
 // 「ロック画面に反映」ボタンを押した時点のスナップショット。
 // TodoItem 側（現在の希望状態）とこれを比較することで、各TODOが「反映済みか／未反映か」を判定できる。
-// ※ この時点ではまだ壁紙エンジン（wallpaperEngine）には接続しておらず、
-//   このスナップショットを保存するところまでが実装範囲。実際にロック画面の見た目へ
-//   反映する処理は今後 wallpaperEngine 側に組み込む。
+// 保存と同時に services/widgetSync.ts 経由でロック画面ウィジェット（TodoWidget）へも渡される。
 export type LockScreenTodoSnapshotItem = {
   id: string;
   text: string;
@@ -136,8 +134,8 @@ export const saveLockScreenTodos = (v: LockScreenTodosSnapshot) => setJSON(KEYS.
 export const loadFirstLaunchAt = () => getJSON(KEYS.firstLaunchAt, null as string | null);
 export const saveFirstLaunchAt = (v: string) => setJSON(KEYS.firstLaunchAt, v);
 
-// 買い切り版を購入済みかどうか。実際の課金処理は未実装のため、現状は常にfalseで、
-// テスト用のデバッグ操作からのみtrueにできる。
+// 買い切り版を購入済みかどうか。購入・復元成功時に services/iap.ts から true が書き込まれる。
+// __DEV__ 限定のテストパネル（SettingsScreen）からも動作確認のため切り替えられる。
 export const loadProUnlocked = () => getJSON(KEYS.proUnlocked, false as boolean);
 export const saveProUnlocked = (v: boolean) => setJSON(KEYS.proUnlocked, v);
 

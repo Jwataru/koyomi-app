@@ -10,7 +10,6 @@ import {
   Linking,
   ActivityIndicator,
   Image,
-  Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';

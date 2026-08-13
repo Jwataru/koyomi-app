@@ -16,7 +16,7 @@ import { View, Image, StyleSheet, Dimensions, Linking, Platform } from 'react-na
 import ViewShot from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
 import { Asset } from 'expo-asset';
-import { colors, LEVELS, LevelKey } from '../theme/theme';
+import { LEVELS, LevelKey } from '../theme/theme';
 import LevelIcon from '../components/LevelIcon';
 import {
   loadCycleSettings,
@@ -63,7 +63,7 @@ export type WallpaperSaveResult = { success: boolean; message: string; level?: L
 
 // 画面のどこからでも呼べるようにするための簡易ブリッジ。
 // WallpaperEngine（App.tsx にマウントする実体）が自分自身の capture 関数をここに登録する。
-let _requestSave: ((forcedLevel?: LevelKey) => Promise<WallpaperSaveResult>) | null = null;
+let _requestSave: ((forcedLevel?: LevelKey, force?: boolean) => Promise<WallpaperSaveResult>) | null = null;
 
 /**
  * forcedLevel を渡すと、実際の周期計算を無視してそのレベルの壁紙を生成・保存する。
@@ -172,17 +172,15 @@ export default function WallpaperEngine() {
         // 写真が設定されていればこれまで通りオフスクリーンキャンバスをキャプチャする。
         // 写真未設定（アイコンのみのフォールバック表示）のときは、キャプチャ経路を使わず
         // 同梱のPNGをそのままローカルファイルとして解決して使う。
-        // ↓ どちらの経路を通ったかを結果メッセージに出すためのフラグ（デバッグ用）
+        // ↓ どちらの経路を通ったかを失敗時のメッセージに出すためのフラグ
         const usedFallback = !nextPhoto?.uri;
         let uri: string | null | undefined;
         if (usedFallback) {
           const fallbackAsset = Asset.fromModule(FALLBACK_WALLPAPERS[lv]);
           await fallbackAsset.downloadAsync();
           uri = fallbackAsset.localUri ?? fallbackAsset.uri;
-          console.log('[wallpaperEngine] fallback path used', { lv, uri });
         } else {
           uri = await shotRef.current?.capture?.();
-          console.log('[wallpaperEngine] capture path used', { lv, uri });
         }
         if (!uri) {
           return { success: false, message: `壁紙画像の生成に失敗しました。[経路:${usedFallback ? 'fallback' : 'capture'}]` };
