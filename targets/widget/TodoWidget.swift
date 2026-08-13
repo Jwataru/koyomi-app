@@ -66,7 +66,7 @@ struct TodoWidgetView: View {
         case .accessoryInline:
             // 時計の横などに1行だけ表示するファミリー
             if let first = entry.items.first {
-                Text("• \(first.text)")
+                Text("\(Image(systemName: "checkmark.square")) \(first.text)")
             } else {
                 Text("koyomi")
             }
@@ -76,7 +76,10 @@ struct TodoWidgetView: View {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(entry.items.prefix(3)) { item in
                     HStack(alignment: .top, spacing: 4) {
-                        Text("•")
+                        // 「・」だと味気ないため、薄めのチェックボックスアイコンに変更。
+                        // 濃さを変えたい場合は opacity の値（0.0〜1.0）を調整する。
+                        Image(systemName: "checkmark.square")
+                            .opacity(0.6)
                         Text(item.text)
                             .lineLimit(1)
                     }
