@@ -38,7 +38,7 @@ const SHORTCUT_ADD_URL = 'https://www.icloud.com/shortcuts/6199dd6a3078494f94ede
 const AUTOMATION_GUIDE_STEPS = [
   {
     image: require('../assets/automation-guide/step-1.png'),
-    text: 'ショートカットアプリを開き、「オートメーション」タブを選ぶ',
+    text: 'ショートカットアプリを開き、\n「オートメーション」タブを選ぶ',
   },
   {
     image: require('../assets/automation-guide/step-2.png'),
@@ -134,12 +134,12 @@ const OB_STEPS: Record<Platform_, Step[]> = {
       icon: '✎',
       title: 'TODOもロック画面に\n表示できます',
       desc:
-        'koyomiのTODOも、専用ウィジェットでロック画面に表示できます。下の手順どおりに設定してください。',
+        'TODOをロック画面に表示できます。\n下の手順どおりに設定してください。',
     },
     {
       icon: '✓',
       title: '設定が完了しました',
-      desc: 'おつかれさまでした。設定した時刻にkoyomiの指標がロック画面へ自動で反映されます。',
+      desc: 'おつかれさまでした。\n設定した時刻にkoyomiの指標が\nロック画面へ自動で反映されます。',
     },
   ],
   android: [
