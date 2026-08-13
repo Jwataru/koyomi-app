@@ -83,16 +83,16 @@ const TODO_GUIDE_STEPS = [
     text: 'ロック画面編集画面の「完了」で設定完了',
   },
   {
-    image: require('../assets/todo-guide/step-4.png'),
+    image: require('../assets/todo-guide/step-5.png'),
     text: '「今日」画面のTODOで、ロック画面に出したい項目の「🔒 ロック画面OFF」をタップしてONにする',
   },
   {
-    image: require('../assets/todo-guide/step-4.png'),
-    text: '「🔒 ロック画面に反映」ボタンをタップする',
+    image: require('../assets/todo-guide/step-6.png'),
+    text: '「🔒 ロック画面に反映」ボタンをタップし、「反映済み」にする',
   },
   {
-    image: require('../assets/todo-guide/step-4.png'),
-    text: 'ロック画面でTODOが見れます',
+    image: require('../assets/todo-guide/step-7.png'),
+    text: 'ロック画面にTODOが反映されてればOK',
   },
 ];
 
@@ -134,7 +134,7 @@ const OB_STEPS: Record<Platform_, Step[]> = {
       icon: '✎',
       title: 'TODOもロック画面に\n表示できます',
       desc:
-        'koyomiのTODOも、専用ウィジェットでロック画面に表示できます。下の手順どおりに設定してください（あとから設定画面でも変更できます）。',
+        'koyomiのTODOも、専用ウィジェットでロック画面に表示できます。下の手順どおりに設定してください。',
     },
     {
       icon: '✓',
