@@ -226,7 +226,7 @@ export default function WallpaperEngine() {
 
         return {
           success: true,
-          message: `「${WALLPAPER_ALBUM_NAME}」アルバムに保存しました（レベル${lv}・${LEVELS[lv].name}）[経路:${usedFallback ? 'fallback' : 'capture'} / uri:${uri.slice(-40)}]`,
+          message: `「${WALLPAPER_ALBUM_NAME}」アルバムに保存しました。`,
           level: lv,
         };
       } catch (e) {
