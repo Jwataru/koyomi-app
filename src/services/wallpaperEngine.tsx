@@ -1,8 +1,13 @@
-// 「今日のレベルに応じた壁紙画像を生成し、専用アルバムに保存する」処理をまとめたエンジン。
+// 「今日のレベルに応じた壁紙画像を生成し、ファイルとして保存する」処理をまとめたエンジン。
 //
 // - 画面には表示しない（画面外に配置した）フル解像度のキャンバスを常時マウントしておき、
 //   react-native-view-shot でその見た目をそのままキャプチャする。
-// - 生成した画像は expo-media-library で「koyomi壁紙」という専用アルバムに保存する。
+// - 生成した画像は、毎回同じファイル名（WALLPAPER_FILE_NAME）で
+//   FileSystem.documentDirectory 直下に上書き保存する。
+//   Info.plist の UIFileSharingEnabled / LSSupportsOpeningDocumentsInPlace により、
+//   このディレクトリは「ファイル」App の「このiPhone内」→「koyomi」から見える。
+//   ショートカット側は「ファイルを取得」アクションでこの固定パスを直接読む
+//   （＝写真ライブラリを経由しないため、カメラロールに画像が増えていくことがない）。
 // - プレビュー画面の「保存」ボタンからも、ショートカット経由のディープリンクからも、
 //   同じ requestWallpaperSave() を呼べば同じ結果になるようにしてある。
 //
@@ -14,7 +19,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Image, StyleSheet, Dimensions, Linking, Platform } from 'react-native';
 import ViewShot from 'react-native-view-shot';
-import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Asset } from 'expo-asset';
 import { LEVELS, LevelKey } from '../theme/theme';
 import LevelIcon from '../components/LevelIcon';
@@ -28,10 +33,17 @@ import {
 import { calcLevel, toDate } from '../logic/cycle';
 import { getTrialStatus } from '../logic/trial';
 
-export const WALLPAPER_ALBUM_NAME = 'koyomi壁紙';
+// 「ファイル」App から見える固定ファイル名。ショートカット側の「ファイルを取得」に
+// 設定するパスとして案内する値なので、変更するとショートカット側も直す必要がある。
+export const WALLPAPER_FILE_NAME = 'koyomi-wallpaper.png';
+
+/** ショートカット設定時の案内表示用に、現在の壁紙ファイルの絶対パスを返す。 */
+export function getWallpaperFilePath(): string {
+  return `${FileSystem.documentDirectory}${WALLPAPER_FILE_NAME}`;
+}
 
 // 写真未設定時に使う、レベルごとのフォールバック壁紙（あらかじめ用意した静止画）。
-// オフスクリーンキャンバスのキャプチャに頼らずそのままアルバムへ保存する。
+// オフスクリーンキャンバスのキャプチャに頼らずそのままファイルとして書き出す。
 const FALLBACK_WALLPAPERS: Record<LevelKey, number> = {
   1: require('../assets/wallpaper-fallback/level1.png'),
   2: require('../assets/wallpaper-fallback/level2.png'),
@@ -80,7 +92,7 @@ export function requestWallpaperSave(forcedLevel?: LevelKey, force = false): Pro
 /**
  * 「設定」画面での変更（写真の更新・生理予定日や周期の変更）をきっかけに、
  * 時刻を待たずその場でロック画面まで反映したいときに呼ぶ。
- * 1. 現在の周期から自動判定したレベルで壁紙を生成し、専用アルバムへ保存
+ * 1. 現在の周期から自動判定したレベルで壁紙を生成し、固定パスのファイルへ保存
  * 2. 保存に成功したら、ショートカットを実行して実際のロック画面まで切り替える
  */
 export async function regenerateAndApplyWallpaper(
@@ -133,9 +145,8 @@ export default function WallpaperEngine() {
           setTimeout(resolve, 120);
         });
 
-        // 「今アルバムに入っている一番新しい写真」がすでに今回適用したい
-        // レベル・写真と同じなら、実質何も変わっていない。
-        // その場合は無駄なPhotosへの書き込みは行わず、ショートカットの再実行だけで済ませる。
+        // 「今のファイルの中身」がすでに今回適用したいレベル・写真と同じなら、実質何も変わっていない。
+        // その場合は無駄な書き込みは行わず、ショートカットの再実行だけで済ませる。
         const lastApplied = await loadWallpaperLastApplied();
         const nothingChanged =
           !force &&
@@ -148,24 +159,6 @@ export default function WallpaperEngine() {
             success: true,
             message: `すでに最新の状態です（レベル${lv}・${LEVELS[lv].name}）`,
             level: lv,
-          };
-        }
-
-        const perm = await MediaLibrary.requestPermissionsAsync();
-        if (perm.status !== 'granted') {
-          return {
-            success: false,
-            message: '写真へのアクセスが許可されていないため保存できませんでした。設定アプリの「koyomi」から写真へのアクセスを許可してください。',
-          };
-        }
-        // iOS で「選択した写真のみ」（Limited）が選ばれていると、写真1枚の追加（write）自体はできても
-        // アルバムの作成・取得・追加といった管理操作が失敗することがある。
-        // ここで先に検知して、原因が分かるメッセージを返す。
-        if (perm.accessPrivileges === 'limited') {
-          return {
-            success: false,
-            message:
-              '写真へのアクセスが「一部の写真のみ」になっているため、専用アルバムを作成・更新できません。設定アプリの「koyomi」→「写真」で「すべての写真」を選択してください。',
           };
         }
 
@@ -186,45 +179,30 @@ export default function WallpaperEngine() {
           return { success: false, message: `壁紙画像の生成に失敗しました。[経路:${usedFallback ? 'fallback' : 'capture'}]` };
         }
 
-        let asset: MediaLibrary.Asset;
+        // 「ファイル」App から見える固定パスへ、毎回同じファイル名で上書き保存する。
+        // 写真ライブラリを一切経由しないため、カメラロールや専用アルバムが
+        // 保存のたびに増えていくことがない（ショートカット側は「ファイルを取得」で
+        // この固定パスを直接読む想定）。
         try {
-          asset = await MediaLibrary.createAssetAsync(uri);
-        } catch (e) {
-          console.error('[wallpaperEngine] createAssetAsync failed', e);
-          return {
-            success: false,
-            message: `写真の保存に失敗しました（${e instanceof Error ? e.message : String(e)}）`,
-          };
-        }
-
-        try {
-          const album = await MediaLibrary.getAlbumAsync(WALLPAPER_ALBUM_NAME);
-          if (album) {
-            await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
-          } else {
-            await MediaLibrary.createAlbumAsync(WALLPAPER_ALBUM_NAME, asset, false);
+          const dest = getWallpaperFilePath();
+          const existing = await FileSystem.getInfoAsync(dest);
+          if (existing.exists) {
+            await FileSystem.deleteAsync(dest, { idempotent: true });
           }
+          await FileSystem.copyAsync({ from: uri, to: dest });
         } catch (e) {
-          // ここで失敗すると、写真自体は保存済みだがアルバムには入らず、
-          // 端末側の判定で「スクリーンショット」等の別アルバムに表示されることがある。
-          console.error('[wallpaperEngine] album op failed', e);
+          console.error('[wallpaperEngine] wallpaper file write failed', e);
           return {
             success: false,
-            message: `写真自体は保存されましたが、「${WALLPAPER_ALBUM_NAME}」アルバムへの登録に失敗しました。設定アプリの「koyomi」→「写真」で「すべての写真」へのアクセスを許可すると解決することがあります。（${
-              e instanceof Error ? e.message : String(e)
-            }）`,
+            message: `壁紙ファイルの保存に失敗しました（${e instanceof Error ? e.message : String(e)}）`,
           };
         }
 
-        // 新しい画像をアルバムに追加できたので、「今アルバムで一番新しいのはこれ」として覚えておく。
-        // ※ 以前は同じレベルの古い画像を削除して「上書き」にしていたが、iOSの仕様上
-        //   削除には必ずユーザー確認ダイアログが出て紛らわしいため撤去した。
-        //   そのため「koyomi壁紙」アルバムは保存するたびに増えていく（手動で整理が必要）。
         await saveWallpaperLastApplied({ level: lv, uri: nextPhoto?.uri ?? null });
 
         return {
           success: true,
-          message: `「${WALLPAPER_ALBUM_NAME}」アルバムに保存しました。`,
+          message: '壁紙ファイルを更新しました。',
           level: lv,
         };
       } catch (e) {

@@ -181,7 +181,7 @@ export default function SettingsScreen() {
     try {
       await commitCycle({ nextPeriodDate, cycleLen: Number(cycleLen) || 0 });
 
-      // 設定済みの各レベルの写真を、それぞれ「koyomi壁紙」アルバムへ保存する
+      // 設定済みの各レベルの写真を、それぞれ壁紙ファイルとして書き出す
       const currentPhotoMeta = photoMetaRef.current;
       const nextSavedMap: WallpaperSavedMap = { ...savedMapRef.current };
       for (const lvl of LEVEL_LIST) {
@@ -259,14 +259,6 @@ export default function SettingsScreen() {
           '端末の設定アプリから koyomi（Expo Go）の写真ライブラリへのアクセスを許可してください。'
         );
         return;
-      }
-      // 「一部の写真のみ（Limited）」を選んでいる場合、専用アルバムの管理ができないなど
-      // 制限が入る。原因が分かるように先に案内しておく。
-      if (perm.accessPrivileges === 'limited') {
-        Alert.alert(
-          '写真へのアクセスが「一部の写真のみ」になっています',
-          'この設定のままだと専用アルバムが更新できないなどの制限があります。設定アプリの「koyomi」→「写真」で「すべての写真」を選択することをおすすめします。'
-        );
       }
       const result = await ImagePicker.launchImageLibraryAsync({
         // 'images' の配列指定が現行SDKの推奨形。旧来の MediaTypeOptions.Images は

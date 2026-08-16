@@ -20,7 +20,8 @@
         "com.apple.security.application-groups": ["group.com.yourname.koyomi"]
       },
       "infoPlist": {
-        "NSPhotoLibraryAddUsageDescription": "koyomiが生成した壁紙を専用アルバムに保存するために使用します。"
+        "UIFileSharingEnabled": true,
+        "LSSupportsOpeningDocumentsInPlace": true
       }
     },
     "android": {
@@ -34,8 +35,7 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "koyomiが生成した壁紙を確認・保存するために使用します。",
-          "savePhotosPermission": "koyomiが生成した壁紙を専用アルバムに保存するために使用します。",
+          "photosPermission": "koyomiで使う写真を選ぶために使用します。",
           "isAccessMediaLocationEnabled": false
         }
       ],

@@ -43,7 +43,7 @@ export type OnboardingState = {
   done: boolean;
 };
 
-// 「使用する写真を更新」ボタンで最後にアルバムへ保存した内容のスナップショット。
+// 「使用する写真を更新」ボタンで最後に壁紙ファイルとして書き出した内容のスナップショット。
 // これと現在の photoMeta を比較して、保存済みかどうか（＝ボタンをグレーアウトするか）を判定する。
 export type WallpaperSavedSnapshot = { uri: string | null };
 export type WallpaperSavedMap = Partial<Record<LevelKey, WallpaperSavedSnapshot>>;
@@ -144,10 +144,9 @@ export const saveProUnlocked = (v: boolean) => setJSON(KEYS.proUnlocked, v);
 export const loadTrialNotificationIds = () => getJSON(KEYS.trialNotificationIds, [] as string[]);
 export const saveTrialNotificationIds = (v: string[]) => setJSON(KEYS.trialNotificationIds, v);
 
-// 「今、アルバムの中で一番新しい（＝ショートカットの『最新の写真』が拾う）のはどのレベルの
+// 「今、壁紙ファイルとして保存されているのはどのレベルの
 // どの写真か」を覚えておくためのもの。ここが今回のリクエストと一致していれば、
-// 実質的に何も変わっていないので Photos への無駄な書き込みをスキップする
-// （※ 古い写真の削除はしない。削除は確認ダイアログが必ず出てしまい紛らわしいため撤去した）。
+// 実質的に何も変わっていないので無駄なファイル書き込みをスキップする。
 export type WallpaperLastApplied = { level: LevelKey; uri: string | null } | null;
 export const loadWallpaperLastApplied = () => getJSON<WallpaperLastApplied>(KEYS.wallpaperLastApplied, null);
 export const saveWallpaperLastApplied = (v: WallpaperLastApplied) => setJSON(KEYS.wallpaperLastApplied, v);

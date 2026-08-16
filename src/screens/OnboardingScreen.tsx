@@ -13,13 +13,11 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
-import * as MediaLibrary from 'expo-media-library';
 import { colors } from '../theme/theme';
 import { loadOnboarding, saveOnboarding, OnboardingState } from '../data/storage';
 import {
   regenerateAndApplyWallpaper,
   WALLPAPER_SHORTCUT_NAME,
-  WALLPAPER_ALBUM_NAME,
 } from '../services/wallpaperEngine';
 
 // Shortcutsアプリで「共有」→「iCloudリンクをコピー」して取得したリンクをそのまま設定する。
@@ -81,16 +79,13 @@ const TODO_GUIDE_STEPS = [
     image: require('../assets/todo-guide/step-4.png'),
     text: 'ロック画面編集画面の「完了」で設定完了',
   },
-];
-
-const TODO_OPERATION_GUIDE_STEPS = [
   {
     image: require('../assets/todo-guide/step-5.png'),
-    text: '「今日」画面のTODOで、ロック画面に出したい項目の\n「🔒 ロック画面OFF」をタップしてONにする',
+    text: '「今日」画面のTODOで、ロック画面に出したい項目の「🔒 ロック画面OFF」をタップしてONにする',
   },
   {
     image: require('../assets/todo-guide/step-6.png'),
-    text: '「🔒 ロック画面に反映」ボタンをタップし、\n「反映済み」にする',
+    text: '「🔒 ロック画面に反映」ボタンをタップし、「反映済み」にする',
   },
   {
     image: require('../assets/todo-guide/step-7.png'),
@@ -111,11 +106,6 @@ type Step = {
 const OB_STEPS: Record<Platform_, Step[]> = {
   ios: [
     {
-      icon: '▣',
-      title: '写真への保存を許可',
-      desc: `koyomiが生成した壁紙画像は「${WALLPAPER_ALBUM_NAME}」という専用アルバムに保存されます。このアルバムはまだ作られておらず、実際に作られるのは最初に壁紙を保存したタイミングです。まずは写真への操作を許可してください。`,
-    },
-    {
       icon: '⇩',
       title: 'ショートカットを追加',
       desc: `koyomiが用意した「${WALLPAPER_SHORTCUT_NAME}」ショートカットを、下のボタンからショートカットアプリに追加してください。`,
@@ -134,14 +124,9 @@ const OB_STEPS: Record<Platform_, Step[]> = {
     },
     {
       icon: '✎',
-      title: 'TODOもロック画面に\n表示させる設定をしよう',
+      title: 'TODOもロック画面に\n表示できます',
       desc:
         'TODOをロック画面に表示できます。\n下の手順どおりに設定してください。',
-    },
-    {
-      icon: '✓',
-      title: 'TODOをロック画面に表示させよう',
-      desc: '実際にTODOがロック画面に表示されるか確認しましょう。\n(こちらのstepの確認は後でもok)',
     },
     {
       icon: '✓',
@@ -180,10 +165,6 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   const [applyNowResult, setApplyNowResult] = useState<{ success: boolean; message: string } | null>(
     null
   );
-  const [photoPermStatus, setPhotoPermStatus] = useState<
-    'unknown' | 'granted' | 'limited' | 'denied'
-  >('unknown');
-  const [requestingPerm, setRequestingPerm] = useState(false);
   const [guidePage, setGuidePage] = useState(0);
   const [carouselWidth, setCarouselWidth] = useState(0);
   const [todoGuidePage, setTodoGuidePage] = useState(0);
@@ -193,20 +174,6 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
     (async () => {
       const ob = await loadOnboarding();
       if (ob.platform) setPlatform(ob.platform);
-    })();
-  }, []);
-
-  useEffect(() => {
-    (async () => {
-      // 許可ダイアログを出さずに現在の許可状態だけを確認する
-      const perm = await MediaLibrary.getPermissionsAsync();
-      if (perm.status !== 'granted') {
-        if (perm.status === 'denied') setPhotoPermStatus('denied');
-      } else if (perm.accessPrivileges === 'limited') {
-        setPhotoPermStatus('limited');
-      } else {
-        setPhotoPermStatus('granted');
-      }
     })();
   }, []);
 
@@ -225,12 +192,10 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   }
 
   const showBatteryToggle = platform === 'android' && step === 1;
-  const showPhotoPermission = platform === 'ios' && step === 0;
-  const showAddShortcut = platform === 'ios' && step === 1;
-  const showAutomationGuide = platform === 'ios' && step === 2;
-  const showApplyNow = platform === 'ios' && step === 3;
-  const showTodoGuide = platform === 'ios' && step === 4;
-  const showTodoOperationGuide = platform === 'ios' && step === 5;
+  const showAddShortcut = platform === 'ios' && step === 0;
+  const showAutomationGuide = platform === 'ios' && step === 1;
+  const showApplyNow = platform === 'ios' && step === 2;
+  const showTodoGuide = platform === 'ios' && step === 3;
 
   async function handleApplyNow() {
     if (applyingNow) return;
@@ -241,23 +206,6 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
       setApplyNowResult(result);
     } finally {
       setApplyingNow(false);
-    }
-  }
-
-  async function handleRequestPhotoPermission() {
-    if (requestingPerm) return;
-    setRequestingPerm(true);
-    try {
-      const perm = await MediaLibrary.requestPermissionsAsync();
-      if (perm.status !== 'granted') {
-        setPhotoPermStatus('denied');
-      } else if (perm.accessPrivileges === 'limited') {
-        setPhotoPermStatus('limited');
-      } else {
-        setPhotoPermStatus('granted');
-      }
-    } finally {
-      setRequestingPerm(false);
     }
   }
 
@@ -311,28 +259,6 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
         </View>
         <Text style={styles.stepTitle}>{current.title}</Text>
         <Text style={styles.stepDesc}>{current.desc}</Text>
-
-        {showPhotoPermission && (
-          <Pressable
-            style={[styles.card, styles.confirmCard]}
-            onPress={handleRequestPhotoPermission}
-            disabled={requestingPerm || photoPermStatus === 'granted'}
-          >
-            {requestingPerm ? (
-              <ActivityIndicator color={colors.l1} size="small" />
-            ) : (
-              <Text style={styles.cardLabel}>
-                {photoPermStatus === 'granted'
-                  ? '許可済みです'
-                  : photoPermStatus === 'limited'
-                  ? '一部の写真のみ許可されています（設定アプリから「すべての写真」に変更できます）'
-                  : photoPermStatus === 'denied'
-                  ? '許可されませんでした（設定アプリから変更できます）'
-                  : '写真へのアクセスを許可する'}
-              </Text>
-            )}
-          </Pressable>
-        )}
 
         {showAddShortcut && (
           <Pressable style={[styles.card, styles.confirmCard]} onPress={handleAddShortcut}>
@@ -456,45 +382,6 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
             </View>
             <View style={styles.guideDots}>
               {TODO_GUIDE_STEPS.map((_, i) => (
-                <View key={i} style={[styles.guideDot, i === todoGuidePage && styles.guideDotOn]} />
-              ))}
-            </View>
-          </View>
-        )}
-
-        {showTodoOperationGuide && (
-          <View style={styles.guideCard}>
-            <View
-              style={styles.guideCarousel}
-              onLayout={(e) => setTodoCarouselWidth(e.nativeEvent.layout.width)}
-            >
-              {todoCarouselWidth > 0 && (
-                <ScrollView
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  decelerationRate="fast"
-                  snapToInterval={todoCarouselWidth}
-                  snapToAlignment="start"
-                  disableIntervalMomentum
-                  onMomentumScrollEnd={handleTodoGuideScroll}
-                >
-                  {TODO_OPERATION_GUIDE_STEPS.map((s, i) => (
-                    <View key={i} style={[styles.guideSlide, { width: todoCarouselWidth }]}>
-                      <View style={styles.guideStepBadge}>
-                        <Text style={styles.guideStepBadgeText}>STEP {i + 1}</Text>
-                      </View>
-                      <View style={styles.guideImageFrame}>
-                        <Image source={s.image} style={styles.guideImage} resizeMode="cover" />
-                      </View>
-                      <Text style={styles.guideText}>{s.text}</Text>
-                    </View>
-                  ))}
-                </ScrollView>
-              )}
-            </View>
-            <View style={styles.guideDots}>
-              {TODO_OPERATION_GUIDE_STEPS.map((_, i) => (
                 <View key={i} style={[styles.guideDot, i === todoGuidePage && styles.guideDotOn]} />
               ))}
             </View>

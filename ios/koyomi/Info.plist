@@ -38,6 +38,8 @@
     <string>12.0</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
     <key>NSAppTransportSecurity</key>
     <dict>
       <key>NSAllowsArbitraryLoads</key>
@@ -50,10 +52,12 @@
     <key>NSMicrophoneUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your microphone</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>koyomiが生成した壁紙を専用アルバムに保存するために使用します。</string>
+    <string>Allow $(PRODUCT_NAME) to save photos</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>koyomiが生成した壁紙を確認・保存するために使用します。</string>
+    <string>koyomiで使う写真を選ぶために使用します。</string>
     <key>RCTNewArchEnabled</key>
+    <true/>
+    <key>UIFileSharingEnabled</key>
     <true/>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
