@@ -55,6 +55,13 @@ const FALLBACK_WALLPAPERS: Record<LevelKey, number> = {
 // ユーザー側で別名にした場合は連携できなくなるため、設定画面でも同じ名前を案内する。
 export const WALLPAPER_SHORTCUT_NAME = 'koyomi';
 
+// ショートカット完了後に自動でこのアプリへ戻ってくるための、x-success コールバックURL。
+// AppleのURLスキームの仕組み（x-callback-url）で、ショートカット実行時に
+// &x-success=<このURL> を付けておくと、正常終了時にOSがこのURLを開いてくれる＝
+// 自動的にkoyomiへフォーカスが戻る。App.tsx側でこのURLを受け取って何もしない
+// （既に保存処理は完了済みなので、ここでは着地させるだけでよい）。
+export const WALLPAPER_APPLIED_CALLBACK_URL = 'koyomi://wallpaper-applied';
+
 /**
  * 「koyomi」ショートカットをその場で実行する（iOSのみ）。
  * ショートカットの中の「壁紙を設定」アクションまで通しで動かすことで、
@@ -63,7 +70,9 @@ export const WALLPAPER_SHORTCUT_NAME = 'koyomi';
  */
 export function runWallpaperShortcut(): void {
   if (Platform.OS !== 'ios') return;
-  const url = `shortcuts://run-shortcut?name=${encodeURIComponent(WALLPAPER_SHORTCUT_NAME)}`;
+  const url =
+    `shortcuts://run-shortcut?name=${encodeURIComponent(WALLPAPER_SHORTCUT_NAME)}` +
+    `&x-success=${encodeURIComponent(WALLPAPER_APPLIED_CALLBACK_URL)}`;
   Linking.openURL(url).catch((e) => {
     console.error('[wallpaperEngine] runWallpaperShortcut failed', e);
   });

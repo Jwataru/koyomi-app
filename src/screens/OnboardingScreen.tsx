@@ -26,7 +26,7 @@ import {
 // 直接開くと、OSがユニバーサルリンクとしてShortcutsアプリの「ショートカットを入手」画面へルーティングする。
 // リリース時はShortcutsアプリで配信用コピーを更新→共有→リンクを取得し、この値を差し替える。
 // .shortcutファイル自体の履歴・バックアップはGitHub（shortcuts/koyomi.shortcut）で別途管理する。
-const SHORTCUT_ADD_URL = 'https://www.icloud.com/shortcuts/6531663821514638809ec19746fa74df';
+const SHORTCUT_ADD_URL = 'https://www.icloud.com/shortcuts/6199dd6a3078494f94ede0697ad2d01d';
 
 // オートメーション作成手順のスクリーンショット。
 // 実機のShortcutsアプリを操作しながら各ステップのスクショを撮り、
@@ -105,6 +105,12 @@ type Step = {
 // iOS はショートカット経由、Android は直接APIで反映という説明の違いを踏襲している。
 const OB_STEPS: Record<Platform_, Step[]> = {
   ios: [
+    {
+      icon: '⚏',
+      title: 'ロック画面をひとつ\n新しく作る',
+      desc:
+        'koyomi専用のロック画面を1つ用意してください。ロック画面を長押し→「＋」→種類は必ず「写真」を選択（「シャッフル」「コレクション」は選べません）。写真は仮のものでOKです（あとでkoyomiが自動的に書き換えます）。作成したら、そのロック画面を左右にスワイプして選び、実際に使うロック画面にしてください。',
+    },
     {
       icon: '⇩',
       title: 'ショートカットを追加',
@@ -192,10 +198,10 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   }
 
   const showBatteryToggle = platform === 'android' && step === 1;
-  const showAddShortcut = platform === 'ios' && step === 0;
-  const showAutomationGuide = platform === 'ios' && step === 1;
-  const showApplyNow = platform === 'ios' && step === 2;
-  const showTodoGuide = platform === 'ios' && step === 3;
+  const showAddShortcut = platform === 'ios' && step === 1;
+  const showAutomationGuide = platform === 'ios' && step === 2;
+  const showApplyNow = platform === 'ios' && step === 3;
+  const showTodoGuide = platform === 'ios' && step === 4;
 
   async function handleApplyNow() {
     if (applyingNow) return;

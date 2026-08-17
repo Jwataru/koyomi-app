@@ -12,7 +12,10 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import PreviewScreen from './src/screens/PreviewScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import { colors } from './src/theme/theme';
-import WallpaperEngine, { requestWallpaperSave } from './src/services/wallpaperEngine';
+import WallpaperEngine, {
+  requestWallpaperSave,
+  WALLPAPER_APPLIED_CALLBACK_URL,
+} from './src/services/wallpaperEngine';
 import { ensureFirstLaunchRecorded, getTrialStatus } from './src/logic/trial';
 import { scheduleTrialNotifications } from './src/services/notifications';
 
@@ -49,11 +52,16 @@ function Tabs() {
   );
 }
 
-// ショートカット（や他アプリ）から koyomi://update-wallpaper を開かれたときに、
-// 現在のレベルの壁紙を再生成してアルバムへ保存する。
-// 「koyomi」ショートカットの「Open URL」アクションから呼ばれる想定。
+// koyomi:// で開かれるディープリンクを2種類扱う。
+// 1. koyomi://update-wallpaper … ショートカット（時刻トリガーのオートメーション等）が
+//    「アプリを起動して最新の壁紙ファイルを作らせる」ために呼ぶもの。
+// 2. koyomi://wallpaper-applied … アプリからその場で「koyomi」ショートカットを実行した後、
+//    ショートカット完了時にOSがx-successコールバックとして自動で開くもの。
+//    保存処理自体はショートカットを呼ぶ前にアプリ側で完了済みなので、ここでは
+//    何もせず、単に「フォーカスをアプリへ戻す」ためだけに存在する。
 function handleDeepLink(url: string | null) {
   if (!url) return;
+  if (url === WALLPAPER_APPLIED_CALLBACK_URL) return;
   if (!url.includes('update-wallpaper')) return;
   requestWallpaperSave().then((result) => {
     if (!result.success) {
