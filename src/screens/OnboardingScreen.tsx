@@ -26,7 +26,7 @@ import {
 // 直接開くと、OSがユニバーサルリンクとしてShortcutsアプリの「ショートカットを入手」画面へルーティングする。
 // リリース時はShortcutsアプリで配信用コピーを更新→共有→リンクを取得し、この値を差し替える。
 // .shortcutファイル自体の履歴・バックアップはGitHub（shortcuts/koyomi.shortcut）で別途管理する。
-const SHORTCUT_ADD_URL = 'https://www.icloud.com/shortcuts/6199dd6a3078494f94ede0697ad2d01d';
+const SHORTCUT_ADD_URL = 'https://www.icloud.com/shortcuts/018a72ee3cf648928040fc96733fdb9f';
 
 // オートメーション作成手順のスクリーンショット。
 // 実機のShortcutsアプリを操作しながら各ステップのスクショを撮り、
