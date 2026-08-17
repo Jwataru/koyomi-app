@@ -59,10 +59,9 @@ const AUTOMATION_GUIDE_STEPS = [
   },
 ];
 
-// TODOのロック画面反映の設定手順のスクリーンショット。
-// 実機でTODO画面〜ロック画面ウィジェット追加までを操作しながら各ステップのスクショを撮り、
-// src/assets/todo-guide/ 配下に同じファイル名で配置してください（今は仮の空画像が入っています）。
-const TODO_GUIDE_STEPS = [
+// TODOウィジェットの追加手順（ロック画面編集画面での操作）のスクリーンショット。
+// src/assets/todo-guide/ 配下に同じファイル名で配置してください。
+const TODO_SETUP_GUIDE_STEPS = [
   {
     image: require('../assets/todo-guide/step-1.png'),
     text: '今のロック画面（さきほど反映した壁紙）を長押しして編集画面に遷移し、「カスタマイズ」を選択',
@@ -79,17 +78,39 @@ const TODO_GUIDE_STEPS = [
     image: require('../assets/todo-guide/step-4.png'),
     text: 'ロック画面編集画面の「完了」で設定完了',
   },
+];
+
+// 設定したウィジェットに、実際にTODOを反映させる操作手順のスクリーンショット（アプリ内の操作）。
+// src/assets/todo-usage-guide/ 配下に同じファイル名で配置してください。
+const TODO_USAGE_GUIDE_STEPS = [
   {
-    image: require('../assets/todo-guide/step-5.png'),
+    image: require('../assets/todo-usage-guide/step-1.png'),
     text: '「今日」画面のTODOで、ロック画面に出したい項目の「🔒 ロック画面OFF」をタップしてONにする',
   },
   {
-    image: require('../assets/todo-guide/step-6.png'),
+    image: require('../assets/todo-usage-guide/step-2.png'),
     text: '「🔒 ロック画面に反映」ボタンをタップし、「反映済み」にする',
   },
   {
-    image: require('../assets/todo-guide/step-7.png'),
+    image: require('../assets/todo-usage-guide/step-3.png'),
     text: 'ロック画面にTODOが反映されてればOK',
+  },
+];
+
+// koyomi専用のロック画面（「写真」タイプ）を新規作成する手順のスクリーンショット。
+// src/assets/lockscreen-guide/ 配下に同じファイル名で配置してください。
+const LOCKSCREEN_GUIDE_STEPS = [
+  {
+    image: require('../assets/lockscreen-guide/step-1.png'),
+    text: 'ロック画面を長押しして編集画面に入り、「＋」で新しいロック画面を追加',
+  },
+  {
+    image: require('../assets/lockscreen-guide/step-2.png'),
+    text: '壁紙の種類は必ず「写真」を選択（写真は仮のものでOK。「シャッフル」「コレクション」は選べません）',
+  },
+  {
+    image: require('../assets/lockscreen-guide/step-3.png'),
+    text: '追加したロック画面を左右にスワイプして選び、実際に使うロック画面にする',
   },
 ];
 
@@ -130,9 +151,13 @@ const OB_STEPS: Record<Platform_, Step[]> = {
     },
     {
       icon: '✎',
-      title: 'TODOもロック画面に\n表示できます',
-      desc:
-        'TODOをロック画面に表示できます。\n下の手順どおりに設定してください。',
+      title: 'TODOをロック画面に\n表示する準備',
+      desc: 'ロック画面の編集画面から、koyomiのTODOウィジェットを追加します。下の手順どおりに設定してください。',
+    },
+    {
+      icon: '☑',
+      title: 'TODOをロック画面に\n反映させる',
+      desc: 'ウィジェットの追加ができたら、実際にTODOをロック画面へ反映させる操作方法です。下の手順どおりに試してみてください。',
     },
     {
       icon: '✓',
@@ -163,6 +188,60 @@ function detectPlatform(): Platform_ {
   return Platform.OS === 'android' ? 'android' : 'ios';
 }
 
+type GuideStep = { image: number; text: string };
+
+// 画像+説明文をSTEPごとに横スワイプで見せるカルーセル。
+// オンボーディング内の「手順を画像付きで案内したい」箇所（ロック画面作成・オートメーション・
+// TODOウィジェット設定・TODOの使い方）で共通して使う。ページ位置・カルーセル幅は
+// インスタンスごとに内部で持つので、呼び出し側は steps を渡すだけでよい。
+function GuideCarousel({ steps, footer }: { steps: GuideStep[]; footer?: React.ReactNode }) {
+  const [page, setPage] = useState(0);
+  const [width, setWidth] = useState(0);
+
+  function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    if (!width) return;
+    const p = Math.round(e.nativeEvent.contentOffset.x / width);
+    if (p !== page) setPage(p);
+  }
+
+  return (
+    <View style={styles.guideCard}>
+      <View style={styles.guideCarousel} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+        {width > 0 && (
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            decelerationRate="fast"
+            snapToInterval={width}
+            snapToAlignment="start"
+            disableIntervalMomentum
+            onMomentumScrollEnd={handleScroll}
+          >
+            {steps.map((s, i) => (
+              <View key={i} style={[styles.guideSlide, { width }]}>
+                <View style={styles.guideStepBadge}>
+                  <Text style={styles.guideStepBadgeText}>STEP {i + 1}</Text>
+                </View>
+                <View style={styles.guideImageFrame}>
+                  <Image source={s.image} style={styles.guideImage} resizeMode="cover" />
+                </View>
+                <Text style={styles.guideText}>{s.text}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+      </View>
+      <View style={styles.guideDots}>
+        {steps.map((_, i) => (
+          <View key={i} style={[styles.guideDot, i === page && styles.guideDotOn]} />
+        ))}
+      </View>
+      {footer}
+    </View>
+  );
+}
+
 export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   const [platform, setPlatform] = useState<Platform_>(detectPlatform());
   const [step, setStep] = useState(0);
@@ -171,10 +250,6 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   const [applyNowResult, setApplyNowResult] = useState<{ success: boolean; message: string } | null>(
     null
   );
-  const [guidePage, setGuidePage] = useState(0);
-  const [carouselWidth, setCarouselWidth] = useState(0);
-  const [todoGuidePage, setTodoGuidePage] = useState(0);
-  const [todoCarouselWidth, setTodoCarouselWidth] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -198,10 +273,12 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   }
 
   const showBatteryToggle = platform === 'android' && step === 1;
+  const showLockScreenGuide = platform === 'ios' && step === 0;
   const showAddShortcut = platform === 'ios' && step === 1;
   const showAutomationGuide = platform === 'ios' && step === 2;
   const showApplyNow = platform === 'ios' && step === 3;
-  const showTodoGuide = platform === 'ios' && step === 4;
+  const showTodoSetupGuide = platform === 'ios' && step === 4;
+  const showTodoUsageGuide = platform === 'ios' && step === 5;
 
   async function handleApplyNow() {
     if (applyingNow) return;
@@ -226,18 +303,6 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
       // 開けない場合はショートカットアプリ自体を開く
       Linking.openURL('shortcuts://').catch(() => {});
     }
-  }
-
-  function handleGuideScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    if (!carouselWidth) return;
-    const page = Math.round(e.nativeEvent.contentOffset.x / carouselWidth);
-    if (page !== guidePage) setGuidePage(page);
-  }
-
-  function handleTodoGuideScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    if (!todoCarouselWidth) return;
-    const page = Math.round(e.nativeEvent.contentOffset.x / todoCarouselWidth);
-    if (page !== todoGuidePage) setTodoGuidePage(page);
   }
 
   return (
@@ -266,6 +331,8 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
         <Text style={styles.stepTitle}>{current.title}</Text>
         <Text style={styles.stepDesc}>{current.desc}</Text>
 
+        {showLockScreenGuide && <GuideCarousel steps={LOCKSCREEN_GUIDE_STEPS} />}
+
         {showAddShortcut && (
           <Pressable style={[styles.card, styles.confirmCard]} onPress={handleAddShortcut}>
             <Text style={styles.cardLabel}>{`「${WALLPAPER_SHORTCUT_NAME}」を追加する`}</Text>
@@ -285,48 +352,17 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
         )}
 
         {showAutomationGuide && (
-          <View style={styles.guideCard}>
-            <View
-              style={styles.guideCarousel}
-              onLayout={(e) => setCarouselWidth(e.nativeEvent.layout.width)}
-            >
-              {carouselWidth > 0 && (
-                <ScrollView
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  decelerationRate="fast"
-                  snapToInterval={carouselWidth}
-                  snapToAlignment="start"
-                  disableIntervalMomentum
-                  onMomentumScrollEnd={handleGuideScroll}
-                >
-                  {AUTOMATION_GUIDE_STEPS.map((s, i) => (
-                    <View key={i} style={[styles.guideSlide, { width: carouselWidth }]}>
-                      <View style={styles.guideStepBadge}>
-                        <Text style={styles.guideStepBadgeText}>STEP {i + 1}</Text>
-                      </View>
-                      <View style={styles.guideImageFrame}>
-                        <Image source={s.image} style={styles.guideImage} resizeMode="cover" />
-                      </View>
-                      <Text style={styles.guideText}>{s.text}</Text>
-                    </View>
-                  ))}
-                </ScrollView>
-              )}
-            </View>
-            <View style={styles.guideDots}>
-              {AUTOMATION_GUIDE_STEPS.map((_, i) => (
-                <View key={i} style={[styles.guideDot, i === guidePage && styles.guideDotOn]} />
-              ))}
-            </View>
-            <Pressable
-              style={styles.ghostBtn}
-              onPress={() => Linking.openURL('shortcuts://').catch(() => {})}
-            >
-              <Text style={styles.ghostBtnText}>ショートカットアプリを開く</Text>
-            </Pressable>
-          </View>
+          <GuideCarousel
+            steps={AUTOMATION_GUIDE_STEPS}
+            footer={
+              <Pressable
+                style={styles.ghostBtn}
+                onPress={() => Linking.openURL('shortcuts://').catch(() => {})}
+              >
+                <Text style={styles.ghostBtnText}>ショートカットアプリを開く</Text>
+              </Pressable>
+            }
+          />
         )}
 
         {showApplyNow && (
@@ -355,44 +391,9 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
           </>
         )}
 
-        {showTodoGuide && (
-          <View style={styles.guideCard}>
-            <View
-              style={styles.guideCarousel}
-              onLayout={(e) => setTodoCarouselWidth(e.nativeEvent.layout.width)}
-            >
-              {todoCarouselWidth > 0 && (
-                <ScrollView
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  decelerationRate="fast"
-                  snapToInterval={todoCarouselWidth}
-                  snapToAlignment="start"
-                  disableIntervalMomentum
-                  onMomentumScrollEnd={handleTodoGuideScroll}
-                >
-                  {TODO_GUIDE_STEPS.map((s, i) => (
-                    <View key={i} style={[styles.guideSlide, { width: todoCarouselWidth }]}>
-                      <View style={styles.guideStepBadge}>
-                        <Text style={styles.guideStepBadgeText}>STEP {i + 1}</Text>
-                      </View>
-                      <View style={styles.guideImageFrame}>
-                        <Image source={s.image} style={styles.guideImage} resizeMode="cover" />
-                      </View>
-                      <Text style={styles.guideText}>{s.text}</Text>
-                    </View>
-                  ))}
-                </ScrollView>
-              )}
-            </View>
-            <View style={styles.guideDots}>
-              {TODO_GUIDE_STEPS.map((_, i) => (
-                <View key={i} style={[styles.guideDot, i === todoGuidePage && styles.guideDotOn]} />
-              ))}
-            </View>
-          </View>
-        )}
+        {showTodoSetupGuide && <GuideCarousel steps={TODO_SETUP_GUIDE_STEPS} />}
+
+        {showTodoUsageGuide && <GuideCarousel steps={TODO_USAGE_GUIDE_STEPS} />}
 
         <View style={styles.dots}>
           {steps.map((_, i) => (
