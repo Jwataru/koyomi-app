@@ -59,27 +59,6 @@ const AUTOMATION_GUIDE_STEPS = [
   },
 ];
 
-// TODOウィジェットの追加手順（ロック画面編集画面での操作）のスクリーンショット。
-// src/assets/todo-guide/ 配下に同じファイル名で配置してください。
-const TODO_SETUP_GUIDE_STEPS = [
-  {
-    image: require('../assets/todo-guide/step-1.png'),
-    text: '今のロック画面（さきほど反映した壁紙）を長押しして編集画面に遷移し、「カスタマイズ」を選択',
-  },
-  {
-    image: require('../assets/todo-guide/step-2.png'),
-    text: 'ウィジェットを追加を押し、「koyomi」を選択',
-  },
-  {
-    image: require('../assets/todo-guide/step-3.png'),
-    text: 'グレーの部分をタップして追加',
-  },
-  {
-    image: require('../assets/todo-guide/step-4.png'),
-    text: 'ロック画面編集画面の「完了」で設定完了',
-  },
-];
-
 // 設定したウィジェットに、実際にTODOを反映させる操作手順のスクリーンショット（アプリ内の操作）。
 // src/assets/todo-usage-guide/ 配下に同じファイル名で配置してください。
 const TODO_USAGE_GUIDE_STEPS = [
@@ -188,21 +167,16 @@ const OB_STEPS: Record<Platform_, Step[]> = {
         'さきほど作った専用のロック画面を紐づける。',
     },
     {
+      icon: '◐',
+      title: '設定を今すぐ\n試してみましょう',
+      desc:
+        '下のボタンでkoyomiの壁紙を今すぐ生成し、ロック画面に設定します。',
+    },
+    {
       icon: '⚑',
       title: 'オートメーションを作成',
       desc:
         '毎日自動で切り替わるようにするには、最初に一度だけにショートカットアプリ側で「オートメーション」を作成する必要があります。下の手順どおりに設定してください。',
-    },
-    {
-      icon: '◐',
-      title: '設定を今すぐ\n試してみましょう',
-      desc:
-        '下のボタンでkoyomiの壁紙を今すぐ生成し、ロック画面に設定します。このあとロック画面を編集する手順があるので、先に一度反映しておくと迷いません。',
-    },
-    {
-      icon: '✎',
-      title: 'TODOをロック画面に\n表示する準備',
-      desc: 'ロック画面の編集画面から、koyomiのTODOウィジェットを追加します。下の手順どおりに設定してください。',
     },
     {
       icon: '☑',
@@ -326,10 +300,9 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   const showLockScreenGuide = platform === 'ios' && step === 0;
   const showAddShortcut = platform === 'ios' && step === 1;
   const showShortcutTargetGuide = platform === 'ios' && step === 2;
-  const showAutomationGuide = platform === 'ios' && step === 3;
-  const showApplyNow = platform === 'ios' && step === 4;
-  const showTodoSetupGuide = platform === 'ios' && step === 5;
-  const showTodoUsageGuide = platform === 'ios' && step === 6;
+  const showApplyNow = platform === 'ios' && step === 3;
+  const showAutomationGuide = platform === 'ios' && step === 4;
+  const showTodoUsageGuide = platform === 'ios' && step === 5;
 
   async function handleApplyNow() {
     if (applyingNow) return;
@@ -416,20 +389,6 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
           </View>
         )}
 
-        {showAutomationGuide && (
-          <GuideCarousel
-            steps={AUTOMATION_GUIDE_STEPS}
-            footer={
-              <Pressable
-                style={styles.ghostBtn}
-                onPress={() => Linking.openURL('shortcuts://').catch(() => {})}
-              >
-                <Text style={styles.ghostBtnText}>ショートカットアプリを開く</Text>
-              </Pressable>
-            }
-          />
-        )}
-
         {showApplyNow && (
           <>
             <Pressable
@@ -456,7 +415,19 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
           </>
         )}
 
-        {showTodoSetupGuide && <GuideCarousel steps={TODO_SETUP_GUIDE_STEPS} />}
+        {showAutomationGuide && (
+          <GuideCarousel
+            steps={AUTOMATION_GUIDE_STEPS}
+            footer={
+              <Pressable
+                style={styles.ghostBtn}
+                onPress={() => Linking.openURL('shortcuts://').catch(() => {})}
+              >
+                <Text style={styles.ghostBtnText}>ショートカットアプリを開く</Text>
+              </Pressable>
+            }
+          />
+        )}
 
         {showTodoUsageGuide && <GuideCarousel steps={TODO_USAGE_GUIDE_STEPS} />}
 

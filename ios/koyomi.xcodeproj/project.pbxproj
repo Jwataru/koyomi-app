@@ -9,10 +9,10 @@
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		431A4ACC149A0661DCCA85F9 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBB333F2D8EA7199EA8AA353 /* ExpoModulesProvider.swift */; };
-		95763B04ADC450CF7A0D3F6F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = DD5A66653EABD2119B9B17F6 /* PrivacyInfo.xcprivacy */; };
+		591EE82391562A42D43C897C /* libPods-koyomi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 3D1674B54437BDB505704BEF /* libPods-koyomi.a */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		CF8195101AED7A1057CDECB5 /* libPods-koyomi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ED161CD2B6B18D256B102CBA /* libPods-koyomi.a */; };
+		D11C3BC0C8D783E9347BF06C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7FA87C081249F2F78E13A5CC /* PrivacyInfo.xcprivacy */; };
+		D7B2D90CB8D1AA6D52CBC03F /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86E221ED2B7E8DFFC1147947 /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 		XX09E725E164C2787243F7XX /* widget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = XXD26DB380DB6D7349BA89XX /* widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		XX12B55A1EDABF083C3B51XX /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = XX470101BAEB8E0BBC8B0DXX /* WidgetKit.framework */; };
@@ -49,16 +49,16 @@
 		13B07F961A680F5B00A75B9A /* koyomi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; fileEncoding = 4; includeInIndex = 0; path = koyomi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = koyomi/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = Info.plist; path = koyomi/Info.plist; sourceTree = "<group>"; };
-		65AAE18E32A1189E95705BEB /* Pods-koyomi.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-koyomi.release.xcconfig"; path = "Target Support Files/Pods-koyomi/Pods-koyomi.release.xcconfig"; sourceTree = "<group>"; };
+		3D1674B54437BDB505704BEF /* libPods-koyomi.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-koyomi.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		537BC551854231AE10DE2D83 /* Pods-koyomi.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-koyomi.release.xcconfig"; path = "Target Support Files/Pods-koyomi/Pods-koyomi.release.xcconfig"; sourceTree = "<group>"; };
+		7FA87C081249F2F78E13A5CC /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = koyomi/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		86E221ED2B7E8DFFC1147947 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-koyomi/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = koyomi/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C38FE3FB40AF9AC53548EB03 /* Pods-koyomi.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-koyomi.debug.xcconfig"; path = "Target Support Files/Pods-koyomi/Pods-koyomi.debug.xcconfig"; sourceTree = "<group>"; };
-		DD5A66653EABD2119B9B17F6 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = koyomi/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		ED161CD2B6B18D256B102CBA /* libPods-koyomi.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-koyomi.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		BE61B8E34BBE3038D107F1FD /* Pods-koyomi.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-koyomi.debug.xcconfig"; path = "Target Support Files/Pods-koyomi/Pods-koyomi.debug.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = undefined; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = koyomi/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* koyomi-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "koyomi-Bridging-Header.h"; path = "koyomi/koyomi-Bridging-Header.h"; sourceTree = "<group>"; };
-		FBB333F2D8EA7199EA8AA353 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-koyomi/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		XX470101BAEB8E0BBC8B0DXX /* WidgetKit.framework */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = undefined; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		XX4DFF38D47332D6BF0183XX /* SwiftUI.framework */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = undefined; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		XXA12889081EB894481655XX /* AppIntents.framework */ = {isa = PBXFileReference; fileEncoding = 4; includeInIndex = undefined; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
@@ -97,7 +97,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CF8195101AED7A1057CDECB5 /* libPods-koyomi.a in Frameworks */,
+				591EE82391562A42D43C897C /* libPods-koyomi.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -115,6 +115,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0D9FC4D023CFEA0CFF35B9B2 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				BE61B8E34BBE3038D107F1FD /* Pods-koyomi.debug.xcconfig */,
+				537BC551854231AE10DE2D83 /* Pods-koyomi.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
 		13B07FAE1A68108700A75B9A /* koyomi */ = {
 			isa = PBXGroup;
 			children = (
@@ -124,7 +134,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				DD5A66653EABD2119B9B17F6 /* PrivacyInfo.xcprivacy */,
+				7FA87C081249F2F78E13A5CC /* PrivacyInfo.xcprivacy */,
 			);
 			name = koyomi;
 			sourceTree = "<group>";
@@ -137,17 +147,9 @@
 				XX4DFF38D47332D6BF0183XX /* SwiftUI.framework */,
 				XXCAF23C3FC41F82140FA1XX /* ActivityKit.framework */,
 				XXA12889081EB894481655XX /* AppIntents.framework */,
-				ED161CD2B6B18D256B102CBA /* libPods-koyomi.a */,
+				3D1674B54437BDB505704BEF /* libPods-koyomi.a */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		353321D33F9EE5CBDB831508 /* koyomi */ = {
-			isa = PBXGroup;
-			children = (
-				FBB333F2D8EA7199EA8AA353 /* ExpoModulesProvider.swift */,
-			);
-			name = koyomi;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -165,8 +167,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				AAFA4C553F460C4876ADC54E /* Pods */,
-				BDC6E357870AF32ED19B5C29 /* ExpoModulesProviders */,
+				0D9FC4D023CFEA0CFF35B9B2 /* Pods */,
+				AC4CBCDCC552BCDBDFE31320 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -182,14 +184,20 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		AAFA4C553F460C4876ADC54E /* Pods */ = {
+		99B9C1CC698EACFF98470814 /* koyomi */ = {
 			isa = PBXGroup;
 			children = (
-				C38FE3FB40AF9AC53548EB03 /* Pods-koyomi.debug.xcconfig */,
-				65AAE18E32A1189E95705BEB /* Pods-koyomi.release.xcconfig */,
+				86E221ED2B7E8DFFC1147947 /* ExpoModulesProvider.swift */,
 			);
-			name = Pods;
-			path = Pods;
+			name = koyomi;
+			sourceTree = "<group>";
+		};
+		AC4CBCDCC552BCDBDFE31320 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				99B9C1CC698EACFF98470814 /* koyomi */,
+			);
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -199,14 +207,6 @@
 			);
 			name = Supporting;
 			path = koyomi/Supporting;
-			sourceTree = "<group>";
-		};
-		BDC6E357870AF32ED19B5C29 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				353321D33F9EE5CBDB831508 /* koyomi */,
-			);
-			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		XX3E41C1850246162C0061XX /* expo:targets */ = {
@@ -226,14 +226,14 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "koyomi" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				EC95F7B1251A853BE01B5F42 /* [Expo] Configure project */,
+				F828037973F68B71A1644BB4 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
 				XX72A8CFBF0FBA13A79902XX /* Embed Foundation Extensions */,
-				D8339F1B681407C72DD1F62F /* [CP] Embed Pods Frameworks */,
+				BF4398304D1129DB5C0770DC /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -312,7 +312,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				95763B04ADC450CF7A0D3F6F /* PrivacyInfo.xcprivacy in Resources */,
+				D11C3BC0C8D783E9347BF06C /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -407,7 +407,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-koyomi/Pods-koyomi-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		D8339F1B681407C72DD1F62F /* [CP] Embed Pods Frameworks */ = {
+		BF4398304D1129DB5C0770DC /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -429,7 +429,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-koyomi/Pods-koyomi-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		EC95F7B1251A853BE01B5F42 /* [Expo] Configure project */ = {
+		F828037973F68B71A1644BB4 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -461,7 +461,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				431A4ACC149A0661DCCA85F9 /* ExpoModulesProvider.swift in Sources */,
+				D7B2D90CB8D1AA6D52CBC03F /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -485,7 +485,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C38FE3FB40AF9AC53548EB03 /* Pods-koyomi.debug.xcconfig */;
+			baseConfigurationReference = BE61B8E34BBE3038D107F1FD /* Pods-koyomi.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -524,7 +524,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 65AAE18E32A1189E95705BEB /* Pods-koyomi.release.xcconfig */;
+			baseConfigurationReference = 537BC551854231AE10DE2D83 /* Pods-koyomi.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
