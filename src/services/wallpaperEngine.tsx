@@ -183,13 +183,13 @@ export default function WallpaperEngine() {
         // 写真ライブラリを一切経由しないため、カメラロールや専用アルバムが
         // 保存のたびに増えていくことがない（ショートカット側は「ファイルを取得」で
         // この固定パスを直接読む想定）。
+        // ※ delete → copy だと毎回別ファイル（別inode）になり、ショートカット側の
+        //   「ファイルを取得」が内部で持つブックマーク参照が数回で壊れる恐れがある。
+        //   そのため中身だけを読み直して同じファイルに上書きする（ファイル自体は作り直さない）。
         try {
           const dest = getWallpaperFilePath();
-          const existing = await FileSystem.getInfoAsync(dest);
-          if (existing.exists) {
-            await FileSystem.deleteAsync(dest, { idempotent: true });
-          }
-          await FileSystem.copyAsync({ from: uri, to: dest });
+          const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+          await FileSystem.writeAsStringAsync(dest, base64, { encoding: FileSystem.EncodingType.Base64 });
         } catch (e) {
           console.error('[wallpaperEngine] wallpaper file write failed', e);
           return {
