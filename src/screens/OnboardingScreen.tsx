@@ -114,6 +114,26 @@ const LOCKSCREEN_GUIDE_STEPS = [
   },
 ];
 
+// 追加したショートカットの「壁紙を設定」アクションに、端末固有のロック画面を
+// 選んでもらう手順のスクリーンショット。配布用の.shortcutファイルには
+// この参照を埋め込めない（ユーザーごとのロック画面はユーザーの端末にしか存在しない）ため、
+// 最初の1回だけ手動で設定してもらう必要がある。
+// src/assets/shortcut-target-guide/ 配下に同じファイル名で配置してください。
+const SHORTCUT_TARGET_GUIDE_STEPS = [
+  {
+    image: require('../assets/shortcut-target-guide/step-1.png'),
+    text: '追加した「koyomi」ショートカットを長押しして「編集」を選ぶ',
+  },
+  {
+    image: require('../assets/shortcut-target-guide/step-2.png'),
+    text: '「壁紙を設定」アクションの空欄（ロック画面）をタップ',
+  },
+  {
+    image: require('../assets/shortcut-target-guide/step-3.png'),
+    text: '一覧から、さきほど作った専用のロック画面を選ぶ',
+  },
+];
+
 type Platform_ = 'ios' | 'android';
 
 type Step = {
@@ -136,6 +156,12 @@ const OB_STEPS: Record<Platform_, Step[]> = {
       icon: '⇩',
       title: 'ショートカットを追加',
       desc: `koyomiが用意した「${WALLPAPER_SHORTCUT_NAME}」ショートカットを、下のボタンからショートカットアプリに追加してください。`,
+    },
+    {
+      icon: '☞',
+      title: 'ショートカットに\n壁紙の対象を設定',
+      desc:
+        'これだけは端末ごとに異なるため、あらかじめ設定しておくことができません。追加した「koyomi」ショートカットを開いて編集し、「壁紙を設定」アクションのロック画面欄に、さきほど作った専用のロック画面を選んでください（最初の1回だけでOKです）。',
     },
     {
       icon: '⚑',
@@ -275,10 +301,11 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
   const showBatteryToggle = platform === 'android' && step === 1;
   const showLockScreenGuide = platform === 'ios' && step === 0;
   const showAddShortcut = platform === 'ios' && step === 1;
-  const showAutomationGuide = platform === 'ios' && step === 2;
-  const showApplyNow = platform === 'ios' && step === 3;
-  const showTodoSetupGuide = platform === 'ios' && step === 4;
-  const showTodoUsageGuide = platform === 'ios' && step === 5;
+  const showShortcutTargetGuide = platform === 'ios' && step === 2;
+  const showAutomationGuide = platform === 'ios' && step === 3;
+  const showApplyNow = platform === 'ios' && step === 4;
+  const showTodoSetupGuide = platform === 'ios' && step === 5;
+  const showTodoUsageGuide = platform === 'ios' && step === 6;
 
   async function handleApplyNow() {
     if (applyingNow) return;
@@ -337,6 +364,20 @@ export default function OnboardingScreen({ onDone }: { onDone?: () => void }) {
           <Pressable style={[styles.card, styles.confirmCard]} onPress={handleAddShortcut}>
             <Text style={styles.cardLabel}>{`「${WALLPAPER_SHORTCUT_NAME}」を追加する`}</Text>
           </Pressable>
+        )}
+
+        {showShortcutTargetGuide && (
+          <GuideCarousel
+            steps={SHORTCUT_TARGET_GUIDE_STEPS}
+            footer={
+              <Pressable
+                style={styles.ghostBtn}
+                onPress={() => Linking.openURL('shortcuts://').catch(() => {})}
+              >
+                <Text style={styles.ghostBtnText}>ショートカットアプリを開く</Text>
+              </Pressable>
+            }
+          />
         )}
 
         {showBatteryToggle && (
