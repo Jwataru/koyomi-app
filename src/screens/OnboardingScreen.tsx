@@ -102,15 +102,31 @@ const TODO_USAGE_GUIDE_STEPS = [
 const LOCKSCREEN_GUIDE_STEPS = [
   {
     image: require('../assets/lockscreen-guide/step-1.png'),
-    text: 'ロック画面を長押しして編集画面に入り、「＋」で新しいロック画面を追加',
+    text: '設定 > 壁紙 から「新しい壁紙を追加」をタップ',
   },
   {
     image: require('../assets/lockscreen-guide/step-2.png'),
-    text: '壁紙の種類は必ず「写真」を選択（写真は仮のものでOK。「シャッフル」「コレクション」は選べません）',
+    text: '壁紙の種類は必ず「写真」を選択。（「シャッフル」「コレクション」は選べません）',
   },
   {
     image: require('../assets/lockscreen-guide/step-3.png'),
-    text: '追加したロック画面を左右にスワイプして選び、実際に使うロック画面にする',
+    text: '適当に写真を選択(写真は後からkoyomi側で自動変更されるのでここでは一旦なんでもok)',
+  },
+  {
+    image: require('../assets/lockscreen-guide/step-4.png'),
+    text: '「ウィジェットを追加」を押し、「koyomi」をタップ',
+  },
+  {
+    image: require('../assets/lockscreen-guide/step-5.png'),
+    text: 'グレーの部分をタップして「koyomi TODO」を追加',
+  },
+  {
+    image: require('../assets/lockscreen-guide/step-6.png'),
+    text: '右上の「追加」を押して壁紙の追加完了',
+  },
+  {
+    image: require('../assets/lockscreen-guide/step-7.png'),
+    text: '新しいロック画面が追加されたことを確認',
   },
 ];
 
@@ -122,15 +138,23 @@ const LOCKSCREEN_GUIDE_STEPS = [
 const SHORTCUT_TARGET_GUIDE_STEPS = [
   {
     image: require('../assets/shortcut-target-guide/step-1.png'),
-    text: '追加した「koyomi」ショートカットを長押しして「編集」を選ぶ',
+    text: '追加した「koyomi(配布用)」ショートカットを長押しして「編集」を選ぶ',
   },
   {
     image: require('../assets/shortcut-target-guide/step-2.png'),
-    text: '「壁紙を設定」アクションの空欄（ロック画面）をタップ',
+    text: '「koyomi(配布用)」→ 「koyomi」に名称変更する',
   },
   {
     image: require('../assets/shortcut-target-guide/step-3.png'),
-    text: '一覧から、さきほど作った専用のロック画面を選ぶ',
+    text: '「壁紙」をタップ',
+  },
+  {
+    image: require('../assets/shortcut-target-guide/step-4.png'),
+    text: '先ほど作成したロック画面を選択',
+  },
+  {
+    image: require('../assets/shortcut-target-guide/step-5.png'),
+    text: '「壁紙2」のように指定した壁紙になっていることを確認できたらok',
   },
 ];
 
@@ -150,7 +174,7 @@ const OB_STEPS: Record<Platform_, Step[]> = {
       icon: '⚏',
       title: 'ロック画面をひとつ\n新しく作る',
       desc:
-        'koyomi専用のロック画面を1つ用意してください。ロック画面を長押し→「＋」→種類は必ず「写真」を選択（「シャッフル」「コレクション」は選べません）。写真は仮のものでOKです（あとでkoyomiが自動的に書き換えます）。作成したら、そのロック画面を左右にスワイプして選び、実際に使うロック画面にしてください。',
+        'koyomi専用のロック画面を1つ用意してください。',
     },
     {
       icon: '⇩',
@@ -161,7 +185,7 @@ const OB_STEPS: Record<Platform_, Step[]> = {
       icon: '☞',
       title: 'ショートカットに\n壁紙の対象を設定',
       desc:
-        'これだけは端末ごとに異なるため、あらかじめ設定しておくことができません。追加した「koyomi」ショートカットを開いて編集し、「壁紙を設定」アクションのロック画面欄に、さきほど作った専用のロック画面を選んでください（最初の1回だけでOKです）。',
+        'さきほど作った専用のロック画面を紐づける。',
     },
     {
       icon: '⚑',
